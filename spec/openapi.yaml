@@ -1,0 +1,69 @@
+openapi: 3.0.3
+info:
+  title: CARCASE Moderation Service
+  version: 0.1.0
+servers:
+  - url: http://localhost:8000
+paths:
+  /health:
+    get:
+      summary: Healthcheck
+      responses:
+        "200":
+          description: OK
+  /moderate:
+    post:
+      summary: Moderate squad text (name/description)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ModerateRequest"
+      responses:
+        "200":
+          description: Moderation decision
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ModerateResponse"
+components:
+  schemas:
+    ModerateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        request_id:
+          type: string
+        user_id:
+          type: integer
+        action:
+          type: string
+          enum: [create, update]
+        field:
+          type: string
+          enum: [squad_name, squad_description]
+        text:
+          type: string
+      required: [request_id, user_id, action, field, text]
+    ModerateResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        decision:
+          type: string
+          enum: [allow, block, review]
+        categories:
+          type: array
+          items:
+            type: string
+        reason_short:
+          type: string
+        policy_version:
+          type: string
+        prompt_version:
+          type: string
+        model:
+          type: string
+      required: [decision, categories, policy_version, prompt_version, model]
+
