@@ -24,3 +24,4 @@ dist/
 build/
 *.egg-info/
 
+docs/ML_System_Design_Doc_Template.md
