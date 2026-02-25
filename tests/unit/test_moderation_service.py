@@ -1,8 +1,18 @@
 from carcase_ai_moderation.application.policy import DEFAULT_POLICY
-from carcase_ai_moderation.application.ports import ClassificationError, ClassificationResult
+from carcase_ai_moderation.application.ports import (
+    ClassificationError,
+    ClassificationResult,
+    EventStoreError,
+)
 from carcase_ai_moderation.application.rules import RuleBasedBlocker
 from carcase_ai_moderation.application.service import ModerationService
-from carcase_ai_moderation.domain.moderation import Action, Decision, Field, ModerationInput
+from carcase_ai_moderation.domain.moderation import (
+    Action,
+    Decision,
+    Field,
+    ModerationInput,
+    ModerationResult,
+)
 from carcase_ai_moderation.infrastructure.classifiers import StaticClassifier
 
 
@@ -94,3 +104,62 @@ def test_classifier_error_falls_back_to_review() -> None:
 
     assert result.decision == Decision.REVIEW
     assert "classifier_error" in result.categories
+
+
+def test_moderation_service_persists_event_when_store_provided() -> None:
+    class RecordingStore:
+        def __init__(self) -> None:
+            self.saved: list[tuple[ModerationInput, ModerationResult]] = []
+
+        def save(
+            self, *, moderation_input: ModerationInput, moderation_result: ModerationResult
+        ) -> None:
+            self.saved.append((moderation_input, moderation_result))
+
+    store = RecordingStore()
+    service = ModerationService(
+        policy=DEFAULT_POLICY,
+        classifier=StaticClassifier(categories=tuple()),
+        rule_blocker=RuleBasedBlocker(),
+        event_store=store,
+    )
+
+    moderation_input = ModerationInput(
+        request_id="r5",
+        user_id=1,
+        action=Action.CREATE,
+        field=Field.SQUAD_NAME,
+        text="some text",
+    )
+    result = service.moderate(moderation_input)
+
+    assert store.saved == [(moderation_input, result)]
+
+
+def test_event_store_error_does_not_break_moderation() -> None:
+    class FailingStore:
+        def save(
+            self, *, moderation_input: ModerationInput, moderation_result: ModerationResult
+        ) -> None:
+            _ = moderation_input
+            _ = moderation_result
+            raise EventStoreError("db down")
+
+    service = ModerationService(
+        policy=DEFAULT_POLICY,
+        classifier=StaticClassifier(categories=("hate_extremism_terror",)),
+        rule_blocker=RuleBasedBlocker(),
+        event_store=FailingStore(),
+    )
+
+    result = service.moderate(
+        ModerationInput(
+            request_id="r6",
+            user_id=1,
+            action=Action.CREATE,
+            field=Field.SQUAD_NAME,
+            text="some text",
+        )
+    )
+
+    assert result.decision == Decision.BLOCK

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from carcase_ai_moderation.domain.moderation import Action, Field
+from carcase_ai_moderation.domain.moderation import Action, Field, ModerationInput, ModerationResult
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,3 +19,16 @@ class ClassificationError(RuntimeError):
 
 class TextClassifierPort(Protocol):
     def classify(self, *, text: str, action: Action, field: Field) -> ClassificationResult: ...
+
+
+class EventStoreError(RuntimeError):
+    pass
+
+
+class ModerationEventStorePort(Protocol):
+    def save(
+        self,
+        *,
+        moderation_input: ModerationInput,
+        moderation_result: ModerationResult,
+    ) -> None: ...
