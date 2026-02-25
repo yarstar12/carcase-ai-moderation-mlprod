@@ -25,3 +25,6 @@ build/
 *.egg-info/
 
 docs/ML_System_Design_Doc_Template.md
+
+# local working docs (do not commit)
+LOCAL_REQUIREMENTS_TRACEABILITY.md
