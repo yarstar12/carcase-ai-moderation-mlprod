@@ -13,5 +13,9 @@ class ClassificationResult:
     reason_short: str | None = None
 
 
+class ClassificationError(RuntimeError):
+    pass
+
+
 class TextClassifierPort(Protocol):
     def classify(self, *, text: str, action: Action, field: Field) -> ClassificationResult: ...

@@ -7,11 +7,13 @@ from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_
 from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse, Response
 
+from carcase_ai_moderation.application.ports import TextClassifierPort
 from carcase_ai_moderation.application.service import ModerationService
 from carcase_ai_moderation.domain.moderation import Action, Decision
 from carcase_ai_moderation.domain.moderation import Field as ModerationField
 from carcase_ai_moderation.domain.moderation import ModerationInput
 from carcase_ai_moderation.infrastructure.classifiers import AlwaysAllowClassifier
+from carcase_ai_moderation.infrastructure.openai_classifier import OpenAIChatCompletionsClassifier
 from carcase_ai_moderation.settings import Settings
 
 REQUESTS_TOTAL = Counter(
@@ -45,10 +47,21 @@ class ModerateResponse(BaseModel):
 
 def create_app(*, moderation_service: ModerationService | None = None) -> FastAPI:
     settings = Settings.from_env()
-    service = moderation_service or ModerationService(
-        policy=settings.policy,
-        classifier=AlwaysAllowClassifier(),
-    )
+    if moderation_service is None:
+        classifier: TextClassifierPort
+        if settings.openai_api_key:
+            classifier = OpenAIChatCompletionsClassifier(
+                api_key=settings.openai_api_key,
+                model=settings.openai_model,
+                base_url=settings.openai_base_url,
+                timeout_s=settings.openai_timeout_s,
+            )
+        else:
+            classifier = AlwaysAllowClassifier()
+
+        service = ModerationService(policy=settings.policy, classifier=classifier)
+    else:
+        service = moderation_service
 
     app = FastAPI(title="CARCASE Moderation Service", version="0.1.0")
 

@@ -1,4 +1,5 @@
 from carcase_ai_moderation.application.policy import DEFAULT_POLICY
+from carcase_ai_moderation.application.ports import ClassificationError, ClassificationResult
 from carcase_ai_moderation.application.rules import RuleBasedBlocker
 from carcase_ai_moderation.application.service import ModerationService
 from carcase_ai_moderation.domain.moderation import Action, Decision, Field, ModerationInput
@@ -65,3 +66,31 @@ def test_rule_flags_long_number_as_pii_and_sends_to_review() -> None:
 
     assert result.decision == Decision.REVIEW
     assert "pii_doxxing" in result.categories
+
+
+def test_classifier_error_falls_back_to_review() -> None:
+    class FailingClassifier:
+        def classify(self, *, text: str, action: Action, field: Field) -> ClassificationResult:
+            _ = text
+            _ = action
+            _ = field
+            raise ClassificationError("boom")
+
+    service = ModerationService(
+        policy=DEFAULT_POLICY,
+        classifier=FailingClassifier(),
+        rule_blocker=RuleBasedBlocker(),
+    )
+
+    result = service.moderate(
+        ModerationInput(
+            request_id="r4",
+            user_id=1,
+            action=Action.CREATE,
+            field=Field.SQUAD_NAME,
+            text="some text",
+        )
+    )
+
+    assert result.decision == Decision.REVIEW
+    assert "classifier_error" in result.categories

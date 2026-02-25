@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from carcase_ai_moderation.application.policy import Policy
-from carcase_ai_moderation.application.ports import TextClassifierPort
+from carcase_ai_moderation.application.ports import ClassificationError, TextClassifierPort
 from carcase_ai_moderation.application.rules import RuleBasedBlocker
 from carcase_ai_moderation.application.text import normalize_text
 from carcase_ai_moderation.domain.moderation import Decision, ModerationInput, ModerationResult
@@ -33,9 +33,21 @@ class ModerationService:
                 model="rules",
             )
 
-        classification = self._classifier.classify(
-            text=moderation_input.text, action=moderation_input.action, field=moderation_input.field
-        )
+        try:
+            classification = self._classifier.classify(
+                text=moderation_input.text,
+                action=moderation_input.action,
+                field=moderation_input.field,
+            )
+        except ClassificationError:
+            return ModerationResult(
+                decision=Decision.REVIEW,
+                categories=("classifier_error",),
+                reason_short="classifier_error",
+                policy_version=self._policy.policy_version,
+                prompt_version=self._policy.prompt_version,
+                model="fallback",
+            )
         categories = set(classification.categories)
         decision_str = self._policy.decision_for_categories(categories)
 
