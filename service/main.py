@@ -14,6 +14,7 @@ from carcase_ai_moderation.domain.moderation import Field as ModerationField
 from carcase_ai_moderation.domain.moderation import ModerationInput
 from carcase_ai_moderation.infrastructure.classifiers import AlwaysAllowClassifier
 from carcase_ai_moderation.infrastructure.openai_classifier import OpenAIChatCompletionsClassifier
+from carcase_ai_moderation.infrastructure.postgres_event_store import PostgresModerationEventStore
 from carcase_ai_moderation.settings import Settings
 
 REQUESTS_TOTAL = Counter(
@@ -59,7 +60,15 @@ def create_app(*, moderation_service: ModerationService | None = None) -> FastAP
         else:
             classifier = AlwaysAllowClassifier()
 
-        service = ModerationService(policy=settings.policy, classifier=classifier)
+        event_store = None
+        if settings.event_store_enabled and settings.database_url:
+            event_store = PostgresModerationEventStore(settings.database_url)
+
+        service = ModerationService(
+            policy=settings.policy,
+            classifier=classifier,
+            event_store=event_store,
+        )
     else:
         service = moderation_service
 

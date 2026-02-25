@@ -80,3 +80,11 @@ mypy src service tests
 ## Локальные секреты
 
 Секреты в репозиторий не коммитим. Пример переменных: `.env.example`
+
+## Postgres audit log (moderation_events)
+
+Чтобы писать аудит решений в Postgres:
+1) применить `infra/postgres/schema.sql`
+2) задать `DATABASE_URL` и `EVENT_STORE_ENABLED=1`
+
+Если `EVENT_STORE_ENABLED=0`, сервис работает без БД и просто возвращает решение.
