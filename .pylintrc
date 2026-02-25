@@ -1,0 +1,23 @@
+[MAIN]
+py-version=3.12
+jobs=0
+
+[FORMAT]
+max-line-length=100
+
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-class-docstring,
+    missing-function-docstring,
+    too-few-public-methods,
+    duplicate-code,
+
+[BASIC]
+good-names=i,j,k,ex,_
+
+[DESIGN]
+max-args=10
+max-attributes=12
+max-locals=20
+max-returns=8

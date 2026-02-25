@@ -11,6 +11,16 @@ paths:
       responses:
         "200":
           description: OK
+  /metrics:
+    get:
+      summary: Prometheus metrics
+      responses:
+        "200":
+          description: Metrics in Prometheus text format
+          content:
+            text/plain:
+              schema:
+                type: string
   /moderate:
     post:
       summary: Moderate squad text (name/description)
@@ -66,4 +76,3 @@ components:
         model:
           type: string
       required: [decision, categories, policy_version, prompt_version, model]
-

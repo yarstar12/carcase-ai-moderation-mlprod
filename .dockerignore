@@ -1,0 +1,14 @@
+.git
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+dist/
+build/
+htmlcov/
+.idea/
+.vscode/
+tests/
+LOCAL_REQUIREMENTS_TRACEABILITY.md
