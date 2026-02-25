@@ -1,6 +1,6 @@
-# CARCASE — AI Moderation (ML in Production module)
+# CARCASE — AI Moderation service
 
-Учебный проект под требования модуля **ML in Production**: прод‑контур вокруг AI‑модерации UGC в продукте **CARCASE ARENA** (Telegram Mini App).
+Репозиторий содержит сервис AI‑модерации пользовательского текста (UGC) для продукта **CARCASE ARENA** (Telegram Mini App).
 
 Цель: модерировать `squad name / squad description` при создании/редактировании через LLM (OpenAI) и построить вокруг этого:
 design doc → сервис → интеграция → хранение → batch/Airflow → мониторинг качества внешней модели.
@@ -25,10 +25,58 @@ design doc → сервис → интеграция → хранение → ba
 
 OpenAPI‑спека: `spec/openapi.yaml`
 
-Ключевой endpoint:
-- `POST /moderate` → `allow | block | review` + категории + версии policy/prompt
+Эндпоинты:
+- `GET /health` — healthcheck
+- `POST /moderate` — модерация текста → `allow | block | review` + категории + версии policy/prompt
+- `GET /metrics` — метрики Prometheus
+
+Примечание: сейчас по умолчанию используется stub‑классификатор (возвращает `allow`). Интеграция с OpenAI добавляется в следующих итерациях.
+
+## Локальный запуск
+
+### Вариант A (рекомендуется): через `uv`
+
+```bash
+uv venv
+uv pip install -e ".[dev]"
+uvicorn service.main:app --reload --port 8000
+```
+
+### Вариант B: через `pip`
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e ".[dev]"
+uvicorn service.main:app --reload --port 8000
+```
+
+Проверка:
+
+```bash
+curl -s http://localhost:8000/health
+```
+
+## Тесты и линтеры
+
+```bash
+pytest
+black --check .
+isort --check-only .
+flake8
+pylint src service tests
+mypy src service tests
+```
+
+## Структура проекта (Clean Architecture)
+
+- `src/carcase_ai_moderation/domain/` — доменные сущности
+- `src/carcase_ai_moderation/application/` — бизнес‑логика, policy, сервис модерации
+- `src/carcase_ai_moderation/infrastructure/` — адаптеры (классификаторы, внешние интеграции)
+- `service/` — REST‑слой (FastAPI)
+- `batch/` — batch‑задачи и Airflow (в следующих итерациях)
+- `infra/` — инфраструктура (в следующих итерациях)
 
 ## Локальные секреты
 
 Секреты в репозиторий не коммитим. Пример переменных: `.env.example`
-

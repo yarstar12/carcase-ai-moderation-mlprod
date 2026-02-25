@@ -8,12 +8,9 @@ from pydantic import BaseModel, Field
 from starlette.responses import JSONResponse, Response
 
 from carcase_ai_moderation.application.service import ModerationService
-from carcase_ai_moderation.domain.moderation import (
-    Action,
-    Decision,
-    Field as ModerationField,
-    ModerationInput,
-)
+from carcase_ai_moderation.domain.moderation import Action, Decision
+from carcase_ai_moderation.domain.moderation import Field as ModerationField
+from carcase_ai_moderation.domain.moderation import ModerationInput
 from carcase_ai_moderation.infrastructure.classifiers import AlwaysAllowClassifier
 from carcase_ai_moderation.settings import Settings
 

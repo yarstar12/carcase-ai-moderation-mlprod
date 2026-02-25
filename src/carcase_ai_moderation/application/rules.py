@@ -6,8 +6,8 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True, slots=True)
 class RuleBasedBlocker:
-    url_pattern: re.Pattern[str] = re.compile(r"(https?://|t\\.me/|telegram\\.me/)", re.IGNORECASE)
-    long_number_pattern: re.Pattern[str] = re.compile(r"\\b\\d{10,}\\b")
+    url_pattern: re.Pattern[str] = re.compile(r"(https?://|t\.me/|telegram\.me/)", re.IGNORECASE)
+    long_number_pattern: re.Pattern[str] = re.compile(r"\b\d{10,}\b")
 
     def categories_for_text(self, text_norm: str) -> set[str]:
         categories: set[str] = set()
