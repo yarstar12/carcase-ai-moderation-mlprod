@@ -8,6 +8,8 @@ from datetime import UTC, date, datetime, timedelta
 from os import getenv
 from typing import Any, cast
 
+from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
+
 from carcase_ai_moderation.application.drift import normalize_counts, psi
 from carcase_ai_moderation.infrastructure.s3_client import S3Client, S3Config
 
@@ -73,6 +75,16 @@ class Aggregates:
     decisions: dict[str, int]
     categories: dict[str, int]
     text_length_buckets: dict[str, int]
+
+
+@dataclass(frozen=True, slots=True)
+class ReportMetrics:
+    total: int
+    review_rate: float
+    block_rate: float
+    classifier_error_rate: float
+    psi_decisions_vs_baseline: float | None
+    csi_text_length_vs_baseline: float | None
 
 
 def _length_bucket_sql() -> str:
@@ -180,12 +192,7 @@ def build_s3_key(*, s3_prefix: str, run_date: date) -> str:
     return f"{prefix}/{run_date.isoformat()}.json"
 
 
-def build_report(
-    *,
-    window: ReportWindow,
-    current: Aggregates,
-    baseline: Aggregates,
-) -> dict[str, object]:
+def compute_metrics(*, current: Aggregates, baseline: Aggregates) -> ReportMetrics:
     review_count = current.decisions.get("review", 0)
     block_count = current.decisions.get("block", 0)
     classifier_error_count = current.categories.get("classifier_error", 0)
@@ -195,12 +202,31 @@ def build_report(
     baseline_lengths = normalize_counts(baseline.text_length_buckets)
     current_lengths = normalize_counts(current.text_length_buckets)
 
-    drift_decisions = (
+    psi_decisions = (
         psi(expected=baseline_decisions, actual=current_decisions) if baseline_decisions else None
     )
-    drift_lengths = (
+    csi_lengths = (
         psi(expected=baseline_lengths, actual=current_lengths) if baseline_lengths else None
     )
+
+    return ReportMetrics(
+        total=current.total,
+        review_rate=_safe_rate(review_count, current.total),
+        block_rate=_safe_rate(block_count, current.total),
+        classifier_error_rate=_safe_rate(classifier_error_count, current.total),
+        psi_decisions_vs_baseline=psi_decisions,
+        csi_text_length_vs_baseline=csi_lengths,
+    )
+
+
+def build_report(
+    *,
+    window: ReportWindow,
+    current: Aggregates,
+    baseline: Aggregates,
+    metrics: ReportMetrics | None = None,
+) -> dict[str, object]:
+    report_metrics = metrics or compute_metrics(current=current, baseline=baseline)
 
     return {
         "run_date": window.run_date.isoformat(),
@@ -218,19 +244,64 @@ def build_report(
             "text_length_buckets": dict(sorted(current.text_length_buckets.items())),
         },
         "rates": {
-            "review_rate": _safe_rate(review_count, current.total),
-            "block_rate": _safe_rate(block_count, current.total),
-            "classifier_error_rate": _safe_rate(classifier_error_count, current.total),
+            "review_rate": report_metrics.review_rate,
+            "block_rate": report_metrics.block_rate,
+            "classifier_error_rate": report_metrics.classifier_error_rate,
         },
         "drift": {
-            "psi_decisions_vs_baseline": drift_decisions,
-            "csi_text_length_vs_baseline": drift_lengths,
+            "psi_decisions_vs_baseline": report_metrics.psi_decisions_vs_baseline,
+            "csi_text_length_vs_baseline": report_metrics.csi_text_length_vs_baseline,
         },
         "quality": {
             "status": "pending_labels",
             "note": "Quality metrics require human labels from the review workflow.",
         },
     }
+
+
+def push_metrics(*, pushgateway_url: str, report_date: date, metrics: ReportMetrics) -> None:
+    registry = CollectorRegistry()
+
+    total = Gauge(
+        "moderation_daily_total", "Total moderation events for the day", registry=registry
+    )
+    review_rate = Gauge(
+        "moderation_daily_review_rate", "Daily share of review decisions", registry=registry
+    )
+    block_rate = Gauge(
+        "moderation_daily_block_rate", "Daily share of block decisions", registry=registry
+    )
+    classifier_error_rate = Gauge(
+        "moderation_daily_classifier_error_rate",
+        "Daily share of classifier errors (fallback to review)",
+        registry=registry,
+    )
+    psi_decisions = Gauge(
+        "moderation_daily_psi_decisions",
+        "PSI for decision distribution vs baseline window",
+        registry=registry,
+    )
+    csi_text_length = Gauge(
+        "moderation_daily_csi_text_length",
+        "CSI (PSI-based) for text length buckets vs baseline window",
+        registry=registry,
+    )
+
+    total.set(metrics.total)
+    review_rate.set(metrics.review_rate)
+    block_rate.set(metrics.block_rate)
+    classifier_error_rate.set(metrics.classifier_error_rate)
+    if metrics.psi_decisions_vs_baseline is not None:
+        psi_decisions.set(metrics.psi_decisions_vs_baseline)
+    if metrics.csi_text_length_vs_baseline is not None:
+        csi_text_length.set(metrics.csi_text_length_vs_baseline)
+
+    push_to_gateway(
+        pushgateway_url,
+        job="moderation_daily_report",
+        registry=registry,
+        grouping_key={"report_date": report_date.isoformat()},
+    )
 
 
 def _require_env(name: str) -> str:
@@ -286,9 +357,17 @@ def main(argv: list[str] | None = None) -> int:
         start_utc=window.baseline_start_utc,
         end_utc=window.baseline_end_utc,
     )
-    report = build_report(window=window, current=current, baseline=baseline)
+    metrics = compute_metrics(current=current, baseline=baseline)
+    report = build_report(window=window, current=current, baseline=baseline, metrics=metrics)
     s3_client.put_json(key=report_key, payload=report)
     LOGGER.info("Uploaded report to S3: %s", report_key)
+
+    pushgateway_url = getenv("PUSHGATEWAY_URL")
+    if pushgateway_url:
+        try:
+            push_metrics(pushgateway_url=pushgateway_url, report_date=run_date, metrics=metrics)
+        except OSError as exc:
+            LOGGER.warning("Failed to push metrics to Pushgateway: %s", exc)
     return 0
 
 

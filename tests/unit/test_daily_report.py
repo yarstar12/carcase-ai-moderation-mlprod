@@ -6,10 +6,12 @@ import pytest
 from carcase_ai_moderation.batch.daily_report import (
     Aggregates,
     BatchError,
+    ReportMetrics,
     ReportWindow,
     build_report,
     build_s3_key,
     main,
+    push_metrics,
 )
 
 
@@ -135,3 +137,29 @@ def test_main_uploads_report_when_missing(monkeypatch: pytest.MonkeyPatch) -> No
     assert key == "reports/daily/2026-02-26.json"
     payload_any = cast(dict[str, Any], payload)
     assert payload_any["run_date"] == "2026-02-26"
+
+
+def test_push_metrics_pushes_to_gateway(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict[str, object]] = []
+
+    def push_stub(*args: object, **kwargs: object) -> None:
+        _ = args
+        calls.append(dict(kwargs))
+
+    monkeypatch.setattr("carcase_ai_moderation.batch.daily_report.push_to_gateway", push_stub)
+
+    push_metrics(
+        pushgateway_url="http://pushgateway:9091",
+        report_date=date(2026, 2, 26),
+        metrics=ReportMetrics(
+            total=1,
+            review_rate=0.0,
+            block_rate=0.0,
+            classifier_error_rate=0.0,
+            psi_decisions_vs_baseline=0.0,
+            csi_text_length_vs_baseline=0.0,
+        ),
+    )
+
+    assert calls
+    assert calls[0]["grouping_key"] == {"report_date": "2026-02-26"}
