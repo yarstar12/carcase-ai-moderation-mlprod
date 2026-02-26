@@ -72,13 +72,13 @@ def create_app(*, moderation_service: ModerationService | None = None) -> FastAP
     else:
         service = moderation_service
 
-    app = FastAPI(title="CARCASE Moderation Service", version="0.1.0")
+    fastapi_app = FastAPI(title="CARCASE Moderation Service", version="0.1.0")
 
-    @app.get("/health")
+    @fastapi_app.get("/health")
     def health() -> JSONResponse:
         return JSONResponse({"status": "ok"})
 
-    @app.post("/moderate", response_model=ModerateResponse)
+    @fastapi_app.post("/moderate", response_model=ModerateResponse)
     def moderate(request: ModerateRequest) -> ModerateResponse:
         started = time.perf_counter()
         result = service.moderate(
@@ -108,11 +108,11 @@ def create_app(*, moderation_service: ModerationService | None = None) -> FastAP
             model=result.model,
         )
 
-    @app.get("/metrics")
+    @fastapi_app.get("/metrics")
     def metrics() -> Response:
         return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-    return app
+    return fastapi_app
 
 
 app = create_app()

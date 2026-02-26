@@ -22,8 +22,8 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
-        policy_version = getenv("POLICY_VERSION", DEFAULT_POLICY.policy_version)
-        prompt_version = getenv("PROMPT_VERSION", DEFAULT_POLICY.prompt_version)
+        policy_version = getenv("POLICY_VERSION") or DEFAULT_POLICY.policy_version
+        prompt_version = getenv("PROMPT_VERSION") or DEFAULT_POLICY.prompt_version
         openai_api_key = getenv("OPENAI_API_KEY")
         openai_model = getenv("OPENAI_MODEL", "gpt-4o-mini")
         openai_base_url = getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
