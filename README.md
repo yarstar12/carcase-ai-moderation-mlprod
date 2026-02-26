@@ -88,3 +88,17 @@ mypy src service tests
 2) задать `DATABASE_URL` и `EVENT_STORE_ENABLED=1`
 
 Если `EVENT_STORE_ENABLED=0`, сервис работает без БД и просто возвращает решение.
+
+## Batch: daily report → S3
+
+Команда (пишет отчёт в S3 по данным из Postgres):
+
+```bash
+python -m carcase_ai_moderation.batch.daily_report --run-date 2026-02-26
+```
+
+Нужные переменные окружения:
+- `DATABASE_URL`
+- `S3_ENDPOINT_URL` (для MinIO)
+- `S3_ACCESS_KEY`, `S3_SECRET_KEY`
+- `S3_BUCKET`
