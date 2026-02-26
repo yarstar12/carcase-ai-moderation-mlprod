@@ -1,0 +1,55 @@
+services:
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    depends_on:
+      - alertmanager
+      - pushgateway
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    command:
+      - "--config.file=/etc/alertmanager/alertmanager.yml"
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    depends_on:
+      - telegram-webhook
+
+  pushgateway:
+    image: prom/pushgateway:v1.8.0
+    ports:
+      - "9091:9091"
+
+  grafana:
+    image: grafana/grafana:10.4.3
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:?set in infra/monitoring/.env}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?set in infra/monitoring/.env}
+    env_file:
+      - .env
+    depends_on:
+      - prometheus
+
+  telegram-webhook:
+    build:
+      context: ./telegram_webhook
+    ports:
+      - "8080:8080"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:?set in infra/monitoring/.env}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:?set in infra/monitoring/.env}
+    env_file:
+      - .env

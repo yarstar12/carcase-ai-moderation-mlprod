@@ -20,3 +20,6 @@
 2) Включить “safe mode” (feature flag) в продукте
 3) Снять сэмплы событий за период и сравнить с baseline
 
+## Инфраструктура (минимальный шаблон)
+
+Docker Compose для Prometheus + Grafana + Alertmanager лежит в `infra/monitoring/`.
