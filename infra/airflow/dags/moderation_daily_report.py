@@ -32,6 +32,7 @@ with DAG(
             "S3_ACCESS_KEY": "{{ var.value.S3_ACCESS_KEY }}",
             "S3_SECRET_KEY": "{{ var.value.S3_SECRET_KEY }}",
             "S3_BUCKET": "{{ var.value.S3_BUCKET }}",
+            "PUSHGATEWAY_URL": "{{ var.value.PUSHGATEWAY_URL | default('') }}",
         },
         auto_remove=True,
         docker_url="unix://var/run/docker.sock",

@@ -27,10 +27,10 @@ DAG ожидает значения в `Airflow Variables`:
 - `DATABASE_URL` — строка подключения к удалённому Postgres
 - `S3_ENDPOINT_URL` — endpoint MinIO/S3
 - `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` — креды/бакет
+- (опционально) `PUSHGATEWAY_URL` — если задан, batch пушит метрики отчёта в Pushgateway
 
 ## Backfill (пример)
 
 ```bash
 airflow dags backfill moderation_daily_report -s 2026-02-01 -e 2026-02-07
 ```
-
