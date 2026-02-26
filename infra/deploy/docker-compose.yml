@@ -1,0 +1,8 @@
+services:
+  moderation-service:
+    image: ghcr.io/yarstar12/carcase-ai-moderation-mlprod:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"

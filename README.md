@@ -68,6 +68,14 @@ pylint src service tests
 mypy src service tests
 ```
 
+## Docker image (GHCR)
+
+CI собирает и пушит image в GitHub Container Registry:
+- `ghcr.io/yarstar12/carcase-ai-moderation-mlprod:latest`
+- `ghcr.io/yarstar12/carcase-ai-moderation-mlprod:sha-<...>`
+
+Шаблон деплоя на удалённый сервер: `infra/deploy/README.md`
+
 ## Структура проекта (Clean Architecture)
 
 - `src/carcase_ai_moderation/domain/` — доменные сущности
