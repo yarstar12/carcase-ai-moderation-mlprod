@@ -110,3 +110,14 @@ python -m carcase_ai_moderation.batch.daily_report --run-date 2026-02-26
 - `S3_ENDPOINT_URL` (для MinIO)
 - `S3_ACCESS_KEY`, `S3_SECRET_KEY`
 - `S3_BUCKET`
+
+## Quality evaluation: validation dataset (offline)
+
+Помимо human truth из очереди `review`, качество внешней LLM контролируется на фиксированном validation dataset (golden set):
+- full‑набор (тысячи/десятки тысяч примеров) прогоняется периодически;
+- smoke‑набор (сотни примеров) используется как быстрый регрессионный тест.
+
+Подход описан в:
+- `docs/QUALITY_EVALUATION.md`
+- `docs/MONITORING.md`
+- `docs/DATA_MODEL.md` (S3 ключи датасета и отчётов)

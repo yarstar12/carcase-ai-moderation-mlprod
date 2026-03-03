@@ -56,14 +56,22 @@
 - `policy/{policy_version}.json`
 - `prompt/{prompt_version}.txt`
 
-### 2.2 Отчёты качества (batch)
+### 2.2 Validation datasets (golden set)
+Храним оффлайн‑наборы для оценки качества внешней LLM и регрессионных проверок:
+- `datasets/validation/{dataset_version}.jsonl` — full набор
+- `datasets/validation/{dataset_version}.smoke.jsonl` — smoke/regression поднабор
+
+Примечание: валидационные наборы не используются в online‑модерации. Они применяются только в evaluation jobs.
+
+### 2.3 Отчёты качества (batch)
 - `reports/daily/{YYYY-MM-DD}.json`
 - `reports/backfill/{run_id}.json`
+- `reports/validation/{dataset_version}/{run_id}.json` — результаты прогона validation dataset (метрики + версии артефактов)
 
 ## 3) Потребности batch
 
 Batch должен уметь:
-- собрать golden set (стратификация по decision/category)
-- посчитать offline метрики (precision/recall/F1 для block, review rate)
-- записать агрегаты и отчёт
-
+- собрать/обновлять validation dataset (синтетика + human truth из `review`, после анонимизации)
+- посчитать offline метрики на validation dataset (precision/recall/F1, критичные FN, доля `review`)
+- посчитать drift метрики (PSI/CSI‑прокси) по прод‑событиям
+- записать агрегаты и отчёты в S3/MinIO и (опционально) в Pushgateway
