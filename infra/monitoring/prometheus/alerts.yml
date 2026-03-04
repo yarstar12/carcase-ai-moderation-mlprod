@@ -46,3 +46,29 @@ groups:
           summary: "High review rate"
           description: "More than 50% of requests go to review for 15 minutes."
 
+      - alert: ModerationValidationMetricsMissing
+        expr: absent(moderation_validation_precision_block{dataset_kind="smoke"})
+        for: 2h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Validation metrics missing"
+          description: "No validation (smoke) metrics are present in Prometheus. Check Airflow DAG and Pushgateway."
+
+      - alert: ModerationValidationPrecisionLow
+        expr: moderation_validation_precision_block{dataset_kind="smoke"} < 0.90
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low BLOCK precision on validation set"
+          description: "Validation precision for BLOCK decision is below 0.90 (smoke set)."
+
+      - alert: ModerationValidationCriticalFNRise
+        expr: moderation_validation_critical_fn_rate{dataset_kind="smoke"} > 0.01
+        for: 2h
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical false negatives on validation set"
+          description: "Share of expected BLOCK predicted as ALLOW is above 1% (smoke set)."

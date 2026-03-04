@@ -35,10 +35,12 @@ DAG ожидает значения в `Airflow Variables`:
 airflow dags backfill moderation_daily_report -s 2026-02-01 -e 2026-02-07
 ```
 
-## Planned: validation evaluation DAG
+## Validation evaluation DAG
 
-Отдельным DAG планируется регулярная оценка качества на validation dataset (golden set):
+Файл DAG: `infra/airflow/dags/moderation_validation_evaluate.py`
+
+Задача: регулярная оценка качества на validation dataset (golden set):
 - прогон smoke‑набора — часто (регрессионный контроль),
-- прогон full‑набора — периодически или вручную (полная переоценка).
+- прогон full‑набора — периодически или вручную (можно вынести в отдельный `@weekly` DAG или запускать вручную).
 
 Описание подхода: `docs/QUALITY_EVALUATION.md`.

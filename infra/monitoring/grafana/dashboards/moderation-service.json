@@ -75,6 +75,128 @@
       ],
       "title": "Latency p95",
       "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(rate(moderation_requests_total{decision=\"review\"}[5m])) / sum(rate(moderation_requests_total[5m]))",
+          "legendFormat": "review rate",
+          "refId": "A"
+        }
+      ],
+      "title": "Review rate (online)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "moderation_validation_precision_block{dataset_kind=\"smoke\"}",
+          "legendFormat": "precision_block (smoke)",
+          "refId": "A"
+        }
+      ],
+      "title": "Validation precision (smoke)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "moderation_validation_critical_fn_rate{dataset_kind=\"smoke\"}",
+          "legendFormat": "critical_fn_rate (smoke)",
+          "refId": "A"
+        }
+      ],
+      "title": "Critical FN rate (smoke)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": "Prometheus",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "id": 6,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      },
+      "targets": [
+        {
+          "expr": "moderation_daily_psi_decisions",
+          "legendFormat": "PSI decisions",
+          "refId": "A"
+        }
+      ],
+      "title": "Decision drift (PSI, daily)",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",
@@ -90,4 +212,3 @@
   "timezone": "browser",
   "version": 1
 }
-
