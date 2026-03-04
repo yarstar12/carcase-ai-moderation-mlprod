@@ -42,6 +42,10 @@ uv pip install -e ".[dev]"
 uvicorn service.main:app --reload --port 8000
 ```
 
+Зависимости фиксируются через `uv.lock`:
+- локально: `uv lock --all-extras`
+- в CI: можно запустить workflow `lock` (workflow_dispatch), он создаст/обновит и закоммитит `uv.lock`.
+
 ### Вариант B: через `pip`
 
 ```bash
