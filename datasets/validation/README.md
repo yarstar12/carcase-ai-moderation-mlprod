@@ -36,3 +36,17 @@ Expected categories should be one or more of:
 Some examples in `v1.smoke.jsonl` intentionally use placeholders (e.g. `[REDACTED_...]`) to avoid committing explicit harmful content.
 They are meant as scaffolding: you can replace them later with more realistic examples while keeping the dataset compliant and safe.
 
+## Generate a synthetic dataset
+
+To generate a larger synthetic dataset (for experimentation and as a starting point for a full validation set):
+
+```bash
+python -m carcase_ai_moderation.batch.validation_dataset_generate \
+  --dataset-version v1 \
+  --dataset-kind full \
+  --total 5000 \
+  --seed 1 \
+  --out-path datasets/validation/v1.jsonl
+```
+
+Note: full datasets are expected to live in S3/MinIO and are ignored by git by default.
