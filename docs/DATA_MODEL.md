@@ -65,8 +65,8 @@
 
 ### 2.3 Отчёты качества (batch)
 - `reports/daily/{YYYY-MM-DD}.json`
-- `reports/backfill/{run_id}.json`
-- `reports/validation/{dataset_version}/{run_id}.json` — результаты прогона validation dataset (метрики + версии артефактов)
+- `reports/backfill/{run_id}.json` (опционально, если делаем отдельный backfill‑контур)
+- `reports/validation/{dataset_version}/{dataset_kind}/{YYYY-MM-DD}.json` — результаты прогона validation dataset (метрики + версии артефактов)
 
 ## 3) Потребности batch
 
