@@ -1,0 +1,38 @@
+# Validation dataset (JSONL) — how it looks
+
+This folder contains small **example** validation datasets (golden set) to demonstrate the format.
+
+In production, the full datasets are expected to live in S3/MinIO under keys like:
+- `datasets/validation/{dataset_version}.jsonl`
+- `datasets/validation/{dataset_version}.smoke.jsonl`
+
+## Format
+
+One JSON object per line (**JSONL**). Minimal fields:
+- `id` — unique example id
+- `dataset_version` — e.g. `v1`
+- `field` — `squad_name | squad_description`
+- `action` — `create | update`
+- `text` — input text
+- `expected_categories` — list of categories (can be empty)
+- `expected_decision` — `allow | block | review`
+- `source` — `synthetic | review_human_truth | other`
+- `notes` — optional
+
+## Categories (v1)
+
+Expected categories should be one or more of:
+- `profanity_insult_harassment`
+- `hate_extremism_terror`
+- `sexual`
+- `sexual_minors`
+- `self_harm_instructions`
+- `violence_threats`
+- `spam_ads_scam`
+- `pii_doxxing`
+
+## Notes on placeholders
+
+Some examples in `v1.smoke.jsonl` intentionally use placeholders (e.g. `[REDACTED_...]`) to avoid committing explicit harmful content.
+They are meant as scaffolding: you can replace them later with more realistic examples while keeping the dataset compliant and safe.
+

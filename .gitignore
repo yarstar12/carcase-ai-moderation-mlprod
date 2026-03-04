@@ -29,3 +29,9 @@ docs/ML_System_Design_Doc_Template.md
 
 # local working docs (do not commit)
 LOCAL_REQUIREMENTS_TRACEABILITY.md
+
+# validation datasets
+# - smoke samples may live in git
+# - full datasets should live in S3/MinIO
+datasets/validation/*.jsonl
+!datasets/validation/*.smoke.jsonl
