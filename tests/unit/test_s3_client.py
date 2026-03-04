@@ -92,6 +92,60 @@ def test_put_json_wraps_client_error(monkeypatch: pytest.MonkeyPatch) -> None:
         client.put_json(key="k", payload={"x": 1})
 
 
+def test_put_bytes_wraps_client_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeS3:
+        def head_object(self, *, Bucket: str, Key: str) -> None:
+            raise AssertionError("not used")
+
+        def put_object(self, **_kwargs: Any) -> None:
+            raise FakeClientError("500")
+
+    def fake_import(name: str) -> object:
+        if name == "boto3":
+            return SimpleNamespace(client=lambda *_args, **_kwargs: FakeS3())
+        if name == "botocore.exceptions":
+            return SimpleNamespace(ClientError=FakeClientError, BotoCoreError=FakeBotoCoreError)
+        return importlib.import_module(name)
+
+    monkeypatch.setattr(
+        "carcase_ai_moderation.infrastructure.s3_client.importlib.import_module", fake_import
+    )
+
+    client = S3Client(S3Config(endpoint_url=None, access_key="a", secret_key="s", bucket="b"))
+    with pytest.raises(S3Error):
+        client.put_bytes(key="k", body=b"hello", content_type="text/plain")
+
+
+def test_put_text_sends_plain_text_content_type(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict[str, object]] = []
+
+    class FakeS3:
+        def head_object(self, *, Bucket: str, Key: str) -> None:
+            raise AssertionError("not used")
+
+        def put_object(self, **kwargs: Any) -> None:
+            calls.append(kwargs)
+
+    def fake_import(name: str) -> object:
+        if name == "boto3":
+            return SimpleNamespace(client=lambda *_args, **_kwargs: FakeS3())
+        if name == "botocore.exceptions":
+            return SimpleNamespace(ClientError=FakeClientError, BotoCoreError=FakeBotoCoreError)
+        return importlib.import_module(name)
+
+    monkeypatch.setattr(
+        "carcase_ai_moderation.infrastructure.s3_client.importlib.import_module", fake_import
+    )
+
+    client = S3Client(S3Config(endpoint_url=None, access_key="a", secret_key="s", bucket="b"))
+    client.put_text(key="k", text="hello")
+    assert calls
+    assert calls[0]["Bucket"] == "b"
+    assert calls[0]["Key"] == "k"
+    assert calls[0]["Body"] == b"hello"
+    assert calls[0]["ContentType"] == "text/plain; charset=utf-8"
+
+
 def test_get_text_returns_object_body(monkeypatch: pytest.MonkeyPatch) -> None:
     class FakeBody:
         def __init__(self, data: bytes) -> None:

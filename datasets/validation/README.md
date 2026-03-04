@@ -50,3 +50,17 @@ python -m carcase_ai_moderation.batch.validation_dataset_generate \
 ```
 
 Note: full datasets are expected to live in S3/MinIO and are ignored by git by default.
+
+To upload a local JSONL file to S3/MinIO:
+
+```bash
+python -m carcase_ai_moderation.batch.validation_dataset_upload \
+  --dataset-version v1 \
+  --dataset-kind full \
+  --dataset-path datasets/validation/v1.jsonl
+```
+
+Required env vars:
+- `S3_ENDPOINT_URL` (optional, for MinIO)
+- `S3_ACCESS_KEY`, `S3_SECRET_KEY`
+- `S3_BUCKET`

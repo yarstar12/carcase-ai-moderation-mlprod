@@ -77,6 +77,24 @@ class S3Client:
         except (client_error, botocore_error) as exc:
             raise S3Error("S3 put_object failed") from exc
 
+    def put_bytes(self, *, key: str, body: bytes, content_type: str | None = None) -> None:
+        _, botocore_exceptions = _import_boto3()
+        client_error = cast(type[BaseException], botocore_exceptions.ClientError)
+        botocore_error = cast(type[BaseException], botocore_exceptions.BotoCoreError)
+
+        client = self._client()
+        kwargs: dict[str, object] = {"Bucket": self.config.bucket, "Key": key, "Body": body}
+        if content_type:
+            kwargs["ContentType"] = content_type
+        try:
+            client.put_object(**kwargs)
+        except (client_error, botocore_error) as exc:
+            raise S3Error("S3 put_object failed") from exc
+
+    def put_text(self, *, key: str, text: str, encoding: str = "utf-8") -> None:
+        body = text.encode(encoding)
+        self.put_bytes(key=key, body=body, content_type=f"text/plain; charset={encoding}")
+
     def get_bytes(self, *, key: str) -> bytes:
         _, botocore_exceptions = _import_boto3()
         client_error = cast(type[BaseException], botocore_exceptions.ClientError)
