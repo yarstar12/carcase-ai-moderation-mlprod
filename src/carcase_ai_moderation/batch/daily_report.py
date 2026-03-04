@@ -259,7 +259,7 @@ def build_report(
     }
 
 
-def push_metrics(*, pushgateway_url: str, report_date: date, metrics: ReportMetrics) -> None:
+def push_metrics(*, pushgateway_url: str, metrics: ReportMetrics) -> None:
     registry = CollectorRegistry()
 
     total = Gauge(
@@ -300,7 +300,6 @@ def push_metrics(*, pushgateway_url: str, report_date: date, metrics: ReportMetr
         pushgateway_url,
         job="moderation_daily_report",
         registry=registry,
-        grouping_key={"report_date": report_date.isoformat()},
     )
 
 
@@ -365,7 +364,7 @@ def main(argv: list[str] | None = None) -> int:
     pushgateway_url = getenv("PUSHGATEWAY_URL")
     if pushgateway_url:
         try:
-            push_metrics(pushgateway_url=pushgateway_url, report_date=run_date, metrics=metrics)
+            push_metrics(pushgateway_url=pushgateway_url, metrics=metrics)
         except OSError as exc:
             LOGGER.warning("Failed to push metrics to Pushgateway: %s", exc)
     return 0

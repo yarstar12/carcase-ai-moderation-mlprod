@@ -121,3 +121,9 @@ python -m carcase_ai_moderation.batch.daily_report --run-date 2026-02-26
 - `docs/QUALITY_EVALUATION.md`
 - `docs/MONITORING.md`
 - `docs/DATA_MODEL.md` (S3 ключи датасета и отчётов)
+
+Команда evaluation (пример smoke):
+
+```bash
+python -m carcase_ai_moderation.batch.validation_evaluate --run-date 2026-02-26 --dataset-version v1 --dataset-kind smoke --require-openai
+```

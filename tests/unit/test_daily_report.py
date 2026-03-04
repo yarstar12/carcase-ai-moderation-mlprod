@@ -150,7 +150,6 @@ def test_push_metrics_pushes_to_gateway(monkeypatch: pytest.MonkeyPatch) -> None
 
     push_metrics(
         pushgateway_url="http://pushgateway:9091",
-        report_date=date(2026, 2, 26),
         metrics=ReportMetrics(
             total=1,
             review_rate=0.0,
@@ -162,4 +161,5 @@ def test_push_metrics_pushes_to_gateway(monkeypatch: pytest.MonkeyPatch) -> None
     )
 
     assert calls
-    assert calls[0]["grouping_key"] == {"report_date": "2026-02-26"}
+    assert calls[0]["job"] == "moderation_daily_report"
+    assert "grouping_key" not in calls[0]
