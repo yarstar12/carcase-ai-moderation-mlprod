@@ -482,20 +482,20 @@ Rollback (если гейт не пройден):
 
 ```mermaid
 flowchart LR
-  U[User] --> TG[Telegram]
-  TG --> MA[Mini App (Web)]
-  MA --> BE[Mini App backend]
-  TG --> BOT[Telegram bot\n(admin review)]
-  BE --> MS[Moderation service]
-  MS --> LLM[OpenAI API]
-  MS --> PG[(Postgres\nmoderation_events)]
-  BATCH[Airflow batch jobs] --> PG
-  BATCH --> S3[(S3/MinIO\nreports + datasets)]
-  MS --> METRICS[/metrics/]
-  METRICS --> PROM[Prometheus]
-  BATCH --> PUSH[Pushgateway]
-  PUSH --> PROM
-  PROM --> G[Grafana + Alertmanager]
+  U[User] --> TG[Telegram];
+  TG --> MA[Mini App Web];
+  MA --> BE[Mini App backend];
+  TG --> BOT[Telegram bot\nadmin review];
+  BE --> MS[Moderation service];
+  MS --> LLM[OpenAI API];
+  MS --> PG[(Postgres\nmoderation_events)];
+  BATCH[Airflow batch jobs] --> PG;
+  BATCH --> S3[(S3/MinIO\nreports + datasets)];
+  MS --> METRICS[/metrics/];
+  METRICS --> PROM[Prometheus];
+  BATCH --> PUSH[Pushgateway];
+  PUSH --> PROM;
+  PROM --> G[Grafana + Alertmanager];
 ```
 
 Online‑флоу (create/update клана):
