@@ -104,7 +104,11 @@ def test_parse_example_and_redacted_detection() -> None:
 
 
 def test_load_jsonl_raises_on_invalid_json_line() -> None:
-    text = '{"id": "e1"}\nnot-json\n'
+    text = (
+        '{"id":"e1","dataset_version":"v1","field":"squad_name","action":"create",'
+        '"text":"ok","expected_categories":[],"expected_decision":"allow","source":"synthetic"}\n'
+        "not-json\n"
+    )
     with pytest.raises(validation_evaluate.BatchError, match="Invalid JSON at line 2"):
         validation_evaluate._load_jsonl(text)
 
