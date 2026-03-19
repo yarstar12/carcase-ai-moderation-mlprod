@@ -60,9 +60,7 @@ def test_parse_iso_date_raises_on_invalid_format() -> None:
 
 
 def test_normalize_prefix_trims_slashes() -> None:
-    assert (
-        validation_evaluate._normalize_prefix(" /datasets/validation/ ") == "datasets/validation"
-    )
+    assert validation_evaluate._normalize_prefix(" /datasets/validation/ ") == "datasets/validation"
 
 
 def test_normalize_prefix_raises_on_empty() -> None:
