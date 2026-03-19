@@ -1,27 +1,29 @@
-# Validation dataset (JSONL) — how it looks
+# Валидационный датасет (JSONL) — формат
 
-This folder contains small **example** validation datasets (golden set) to demonstrate the format.
+Эта папка содержит небольшие **примерные** валидационные датасеты (эталонный набор), чтобы показать формат.
 
-In production, the full datasets are expected to live in S3/MinIO under keys like:
+В рабочем окружении полный датасет хранится в S3/MinIO по ключам вида:
 - `datasets/validation/{dataset_version}.jsonl`
 - `datasets/validation/{dataset_version}.smoke.jsonl`
 
-## Format
+Примечание: по умолчанию Git хранит только короткий набор (`smoke`), а полный набор (`full`) игнорируется и должен лежать в S3/MinIO.
 
-One JSON object per line (**JSONL**). Minimal fields:
-- `id` — unique example id
-- `dataset_version` — e.g. `v1`
+## Формат
+
+Один JSON‑объект на строку (**JSONL**). Минимальные поля:
+- `id` — уникальный идентификатор примера
+- `dataset_version` — например `v1`
 - `field` — `squad_name | squad_description`
 - `action` — `create | update`
-- `text` — input text
-- `expected_categories` — list of categories (can be empty)
+- `text` — входной текст
+- `expected_categories` — список категорий (может быть пустым)
 - `expected_decision` — `allow | block | review`
 - `source` — `synthetic | review_human_truth | other`
-- `notes` — optional
+- `notes` — опционально
 
-## Categories (v1)
+## Категории (v1)
 
-Expected categories should be one or more of:
+`expected_categories` содержит одну или несколько категорий из списка:
 - `profanity_insult_harassment`
 - `hate_extremism_terror`
 - `sexual`
@@ -31,14 +33,14 @@ Expected categories should be one or more of:
 - `spam_ads_scam`
 - `pii_doxxing`
 
-## Notes on placeholders
+## Про плейсхолдеры
 
-Some examples in `v1.smoke.jsonl` intentionally use placeholders (e.g. `[REDACTED_...]`) to avoid committing explicit harmful content.
-They are meant as scaffolding: you can replace them later with more realistic examples while keeping the dataset compliant and safe.
+Некоторые примеры в `v1.smoke.jsonl` намеренно используют плейсхолдеры (например `[REDACTED_...]`), чтобы не коммитить явный вредоносный контент в репозиторий.
+Это “каркас”: позже можно заменить плейсхолдеры на более реалистичные примеры, сохранив корректность формата.
 
-## Generate a synthetic dataset
+## Генерация синтетического датасета
 
-To generate a larger synthetic dataset (for experimentation and as a starting point for a full validation set):
+Чтобы сгенерировать более крупный синтетический датасет (как стартовую точку для полного набора):
 
 ```bash
 python -m carcase_ai_moderation.batch.validation_dataset_generate \
@@ -49,9 +51,9 @@ python -m carcase_ai_moderation.batch.validation_dataset_generate \
   --out-path datasets/validation/v1.jsonl
 ```
 
-Note: full datasets are expected to live in S3/MinIO and are ignored by git by default.
+## Загрузка в S3/MinIO
 
-To upload a local JSONL file to S3/MinIO:
+Чтобы загрузить локальный JSONL‑файл в S3/MinIO:
 
 ```bash
 python -m carcase_ai_moderation.batch.validation_dataset_upload \
@@ -60,7 +62,7 @@ python -m carcase_ai_moderation.batch.validation_dataset_upload \
   --dataset-path datasets/validation/v1.jsonl
 ```
 
-Required env vars:
-- `S3_ENDPOINT_URL` (optional, for MinIO)
+Нужные переменные окружения:
+- `S3_ENDPOINT_URL` (опционально, для MinIO)
 - `S3_ACCESS_KEY`, `S3_SECRET_KEY`
 - `S3_BUCKET`

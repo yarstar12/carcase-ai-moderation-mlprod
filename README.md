@@ -1,36 +1,38 @@
-# CARCASE — AI Moderation service
+# CARCASE — сервис ИИ‑модерации
 
-Репозиторий содержит сервис AI‑модерации пользовательского текста (UGC) для продукта **CARCASE ARENA** (Telegram Mini App).
+Репозиторий содержит отдельный сервис модерации пользовательского текста для продукта **CARCASE ARENA** (Telegram Mini App).
 
-Цель: модерировать `squad name / squad description` при создании/редактировании через LLM (OpenAI) и построить вокруг этого:
-design doc → сервис → интеграция → хранение → batch/Airflow → мониторинг качества внешней модели.
+Сервис проверяет название и описание клана при создании/редактировании, чтобы:
+- не допускать публикации нарушений в публичных рейтингах;
+- автоматизировать модерацию и снизить расходы на ручную проверку;
+- контролировать качество внешней языковой модели (OpenAI) через оффлайн‑оценку и мониторинг.
 
-## Как это связано с основным проектом
+## Связь с продуктом
 
-- Этот репозиторий — **отдельный** (сдаётся преподавателю).
-- Интеграция с продуктом делается **по HTTP**:
-  - Mini App backend (в основном проекте) вызывает `moderation-service` перед `/api/squads/create` и `/api/squads/update`.
-  - Админ‑контур (Telegram‑бот) позволяет разбирать очередь `review` и давать “истину” для метрик качества.
+Интеграция с продуктом делается по HTTP:
+- бэкенд продукта вызывает `moderation-service` перед созданием/изменением клана;
+- админ‑контур (Telegram‑бот) разбирает случаи `review` и (при необходимости) проводит выборочный аудит авто‑решений.
 
-## Что здесь будет (по компонентам модуля)
+## Состав репозитория
 
-1) Design Doc (business/DS/pilot): `docs/ML_SYSTEM_DESIGN_DOC.md`  
-2) Архитектура + ADR + C4 + NFR: `docs/adr/`, `docs/c4/`  
-3) Online moderation service (REST + Docker + CI/CD): `service/`  
-4) Storage (Postgres + S3): миграции/описания в `docs/` + код в `service/`/`batch/`  
-5) Batch/Airflow + backfill: `batch/`  
-6) Мониторинг и алертинг (ops + качество LLM): `docs/MONITORING.md` + инфраструктура в `infra/`  
+- `docs/ML_SYSTEM_DESIGN_DOC.md` — дизайн‑документ системы машинного обучения (бизнес, часть по данным, пилот, внедрение)
+- `docs/adr/` — ADR (архитектурные решения)
+- `docs/c4/` — схемы C4
+- `service/` — HTTP API (FastAPI)
+- `src/carcase_ai_moderation/` — домен/бизнес‑логика/инфраструктурные адаптеры
+- `spec/openapi.yaml` — OpenAPI‑контракт
+- `infra/` — шаблоны инфраструктуры (деплой, Airflow, мониторинг)
 
-## Быстрый обзор API (черновик)
+## API (кратко)
 
-OpenAPI‑спека: `spec/openapi.yaml`
+OpenAPI‑контракт: `spec/openapi.yaml`
 
 Эндпоинты:
-- `GET /health` — healthcheck
-- `POST /moderate` — модерация текста → `allow | block | review` + категории + версии policy/prompt
+- `GET /health` — проверка работоспособности
+- `POST /moderate` — модерация текста → `allow | block | review` + категории + версии policy/prompt/model
 - `GET /metrics` — метрики Prometheus
 
-Примечание: если задан `OPENAI_API_KEY`, сервис использует OpenAI Chat Completions для классификации. Если ключ не задан, используется stub‑классификатор (возвращает `allow`).
+Примечание: если задан `OPENAI_API_KEY`, сервис использует API OpenAI (Chat Completions) для классификации. Если ключ не задан, используется классификатор‑заглушка (всегда возвращает `allow`).
 
 ## Локальный запуск
 
@@ -41,10 +43,6 @@ uv venv
 uv pip install -e ".[dev]"
 uvicorn service.main:app --reload --port 8000
 ```
-
-Зависимости фиксируются через `uv.lock`:
-- локально: `uv lock --all-extras`
-- в CI: можно запустить workflow `lock` (workflow_dispatch), он создаст/обновит и закоммитит `uv.lock`.
 
 ### Вариант B: через `pip`
 
@@ -61,7 +59,13 @@ uvicorn service.main:app --reload --port 8000
 curl -s http://localhost:8000/health
 ```
 
-## Тесты и линтеры
+### Фиксация зависимостей (`uv.lock`)
+
+Зависимости фиксируются через `uv.lock`:
+- локально: `uv lock --all-extras`
+- в CI: workflow `lock` (запуск вручную) генерирует/обновляет и коммитит `uv.lock`.
+
+## Проверка качества кода
 
 ```bash
 pytest
@@ -72,28 +76,27 @@ pylint src service tests
 mypy src service tests
 ```
 
-## Docker image (GHCR)
+## Docker‑образ (GHCR)
 
-CI собирает и пушит image в GitHub Container Registry:
+CI собирает и публикует образ в контейнерный реестр GitHub (GHCR):
 - `ghcr.io/yarstar12/carcase-ai-moderation-mlprod:latest`
 - `ghcr.io/yarstar12/carcase-ai-moderation-mlprod:sha-<...>`
 
-Шаблон деплоя на удалённый сервер: `infra/deploy/README.md`
+Шаблон деплоя на удалённый сервер (push‑модель): `infra/deploy/README.md`
 
-## Структура проекта (Clean Architecture)
+## Структура проекта (чистая архитектура)
 
 - `src/carcase_ai_moderation/domain/` — доменные сущности
-- `src/carcase_ai_moderation/application/` — бизнес‑логика, policy, сервис модерации
-- `src/carcase_ai_moderation/infrastructure/` — адаптеры (классификаторы, внешние интеграции)
-- `service/` — REST‑слой (FastAPI)
-- `batch/` — batch‑задачи и Airflow (в следующих итерациях)
-- `infra/` — инфраструктура (в следующих итерациях)
+- `src/carcase_ai_moderation/application/` — бизнес‑логика (policy, правила, сервис модерации)
+- `src/carcase_ai_moderation/infrastructure/` — адаптеры (OpenAI, Postgres, S3)
+- `service/` — HTTP‑слой (FastAPI)
+- `infra/` — инфраструктура (Airflow, мониторинг, деплой)
 
-## Локальные секреты
+## Секреты и переменные окружения
 
-Секреты в репозиторий не коммитим. Пример переменных: `.env.example`
+Секреты в репозиторий не коммитим. Пример переменных: `.env.example`.
 
-## Postgres audit log (moderation_events)
+## Аудит в Postgres (moderation_events)
 
 Чтобы писать аудит решений в Postgres:
 1) применить `infra/postgres/schema.sql`
@@ -101,7 +104,7 @@ CI собирает и пушит image в GitHub Container Registry:
 
 Если `EVENT_STORE_ENABLED=0`, сервис работает без БД и просто возвращает решение.
 
-## Batch: daily report → S3
+## Пакетные задачи: ежедневный отчёт → S3
 
 Команда (пишет отчёт в S3 по данным из Postgres):
 
@@ -115,19 +118,23 @@ python -m carcase_ai_moderation.batch.daily_report --run-date 2026-02-26
 - `S3_ACCESS_KEY`, `S3_SECRET_KEY`
 - `S3_BUCKET`
 
-## Quality evaluation: validation dataset (offline)
+## Оффлайн‑оценка качества на валидационном датасете
 
-Помимо human truth из очереди `review`, качество внешней LLM контролируется на фиксированном validation dataset (golden set):
-- full‑набор (тысячи/десятки тысяч примеров) прогоняется периодически;
-- smoke‑набор (сотни примеров) используется как быстрый регрессионный тест.
+Качество внешней языковой модели контролируется на фиксированном валидационном датасете (эталонном наборе примеров):
+- полный набор (`full`, тысячи/десятки тысяч примеров) прогоняется периодически;
+- короткий набор (`smoke`, сотни примеров) используется как быстрый регрессионный тест.
 
 Подход описан в:
 - `docs/QUALITY_EVALUATION.md`
 - `docs/MONITORING.md`
-- `docs/DATA_MODEL.md` (S3 ключи датасета и отчётов)
+- `docs/DATA_MODEL.md` (ключи S3 для датасетов и отчётов)
 
-Команда evaluation (пример smoke):
+Команда оценки (пример `smoke`):
 
 ```bash
-python -m carcase_ai_moderation.batch.validation_evaluate --run-date 2026-02-26 --dataset-version v1 --dataset-kind smoke --require-openai
+python -m carcase_ai_moderation.batch.validation_evaluate \
+  --run-date 2026-02-26 \
+  --dataset-version v1 \
+  --dataset-kind smoke \
+  --require-openai
 ```
