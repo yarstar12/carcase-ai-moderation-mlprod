@@ -10,7 +10,7 @@ services:
       - airflow-db-data:/var/lib/postgresql/data
 
   minio:
-    image: minio/minio:RELEASE.2026-01-20T20-00-00Z
+    image: minio/minio:latest
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -36,6 +36,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
       AIRFLOW_UID: ${AIRFLOW_UID:-50000}
+      _PIP_ADDITIONAL_REQUIREMENTS: ${AIRFLOW_PIP_ADDITIONAL_REQUIREMENTS:-apache-airflow-providers-docker}
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -43,8 +44,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     command: >
       bash -lc "
-      airflow db migrate &&
-      airflow users create
+      python -m airflow db migrate &&
+      python -m airflow users create
       --username '${AIRFLOW_ADMIN_USERNAME:?set in infra/airflow/.env}'
       --password '${AIRFLOW_ADMIN_PASSWORD:?set in infra/airflow/.env}'
       --firstname Airflow
@@ -67,7 +68,8 @@ services:
       AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?set in infra/airflow/.env}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__WEBSERVER__EXPOSE_CONFIG: "false"
-    command: webserver
+      _PIP_ADDITIONAL_REQUIREMENTS: ${AIRFLOW_PIP_ADDITIONAL_REQUIREMENTS:-apache-airflow-providers-docker}
+    command: python -m airflow webserver
     ports:
       - "8088:8080"
     volumes:
@@ -89,7 +91,8 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-db:5432/airflow
       AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW_FERNET_KEY:?set in infra/airflow/.env}
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-    command: scheduler
+      _PIP_ADDITIONAL_REQUIREMENTS: ${AIRFLOW_PIP_ADDITIONAL_REQUIREMENTS:-apache-airflow-providers-docker}
+    command: python -m airflow scheduler
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs

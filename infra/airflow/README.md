@@ -117,3 +117,9 @@
 
 - `infra/airflow/docker-compose.yml`
 - `infra/airflow/.env.example`
+
+## Compose notes
+
+1. `minio/minio` используется с тегом `latest`, чтобы не зависеть от несуществующего release tag.
+2. Airflow стартует через `python -m airflow ...`, чтобы bootstrap не зависел от shell `PATH`.
+3. В compose прокидывается `_PIP_ADDITIONAL_REQUIREMENTS=apache-airflow-providers-docker`, потому что DAG'и используют `DockerOperator`.
