@@ -14,6 +14,7 @@ from carcase_ai_moderation.application.drift import normalize_counts, psi
 from carcase_ai_moderation.infrastructure.s3_client import S3Client, S3Config
 
 LOGGER = logging.getLogger(__name__)
+DEFAULT_EVENTS_TABLE = "squad_moderation_events"
 
 
 class BatchError(RuntimeError):
@@ -39,6 +40,16 @@ def _normalize_prefix(prefix: str) -> str:
     if not trimmed:
         raise BatchError("s3-prefix must not be empty")
     return trimmed
+
+
+def _normalize_table_name(value: str | None) -> str:
+    candidate = (value or DEFAULT_EVENTS_TABLE).strip()
+    if not candidate:
+        raise BatchError("events-table must not be empty")
+    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_.")
+    if any(char not in allowed for char in candidate):
+        raise BatchError("events-table contains unsupported characters")
+    return candidate
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,11 +111,11 @@ def _length_bucket_sql() -> str:
     """
 
 
-def _fetch_total(cur: Any, *, start_utc: datetime, end_utc: datetime) -> int:
+def _fetch_total(cur: Any, *, table_name: str, start_utc: datetime, end_utc: datetime) -> int:
     cur.execute(
-        """
+        f"""
         select count(*)::bigint
-        from moderation_events
+        from {table_name}
         where created_at >= %(s)s and created_at < %(e)s
         """,
         {"s": start_utc, "e": end_utc},
@@ -115,11 +126,13 @@ def _fetch_total(cur: Any, *, start_utc: datetime, end_utc: datetime) -> int:
     return int(row[0])
 
 
-def _fetch_decisions(cur: Any, *, start_utc: datetime, end_utc: datetime) -> dict[str, int]:
+def _fetch_decisions(
+    cur: Any, *, table_name: str, start_utc: datetime, end_utc: datetime
+) -> dict[str, int]:
     cur.execute(
-        """
+        f"""
         select decision, count(*)::bigint
-        from moderation_events
+        from {table_name}
         where created_at >= %(s)s and created_at < %(e)s
         group by decision
         """,
@@ -128,11 +141,13 @@ def _fetch_decisions(cur: Any, *, start_utc: datetime, end_utc: datetime) -> dic
     return {str(decision): int(count) for decision, count in cur.fetchall()}
 
 
-def _fetch_categories(cur: Any, *, start_utc: datetime, end_utc: datetime) -> dict[str, int]:
+def _fetch_categories(
+    cur: Any, *, table_name: str, start_utc: datetime, end_utc: datetime
+) -> dict[str, int]:
     cur.execute(
-        """
+        f"""
         select category, count(*)::bigint
-        from moderation_events
+        from {table_name}
         cross join lateral jsonb_array_elements_text(categories) as category
         where created_at >= %(s)s and created_at < %(e)s
         group by category
@@ -143,12 +158,12 @@ def _fetch_categories(cur: Any, *, start_utc: datetime, end_utc: datetime) -> di
 
 
 def _fetch_text_length_buckets(
-    cur: Any, *, start_utc: datetime, end_utc: datetime
+    cur: Any, *, table_name: str, start_utc: datetime, end_utc: datetime
 ) -> dict[str, int]:
     cur.execute(
         f"""
         select {_length_bucket_sql()} as bucket, count(*)::bigint
-        from moderation_events
+        from {table_name}
         where created_at >= %(s)s and created_at < %(e)s
         group by bucket
         """,
@@ -157,18 +172,26 @@ def _fetch_text_length_buckets(
     return {str(bucket): int(count) for bucket, count in cur.fetchall()}
 
 
-def fetch_aggregates(*, database_url: str, start_utc: datetime, end_utc: datetime) -> Aggregates:
+def fetch_aggregates(
+    *, database_url: str, table_name: str, start_utc: datetime, end_utc: datetime
+) -> Aggregates:
     psycopg = _import_psycopg()
     psycopg_error = cast(type[BaseException], psycopg.Error)
 
     try:
         with psycopg.connect(database_url) as conn:
             with conn.cursor() as cur:
-                total = _fetch_total(cur, start_utc=start_utc, end_utc=end_utc)
-                decisions = _fetch_decisions(cur, start_utc=start_utc, end_utc=end_utc)
-                categories = _fetch_categories(cur, start_utc=start_utc, end_utc=end_utc)
+                total = _fetch_total(
+                    cur, table_name=table_name, start_utc=start_utc, end_utc=end_utc
+                )
+                decisions = _fetch_decisions(
+                    cur, table_name=table_name, start_utc=start_utc, end_utc=end_utc
+                )
+                categories = _fetch_categories(
+                    cur, table_name=table_name, start_utc=start_utc, end_utc=end_utc
+                )
                 text_length_buckets = _fetch_text_length_buckets(
-                    cur, start_utc=start_utc, end_utc=end_utc
+                    cur, table_name=table_name, start_utc=start_utc, end_utc=end_utc
                 )
     except psycopg_error as exc:
         raise BatchError("Failed to read from Postgres") from exc
@@ -326,11 +349,17 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Overwrite report if it already exists in S3.",
     )
+    parser.add_argument(
+        "--events-table",
+        default=getenv("MODERATION_EVENTS_TABLE", DEFAULT_EVENTS_TABLE),
+        help="Postgres table that stores moderation events.",
+    )
     args = parser.parse_args(argv)
 
     run_date = _parse_iso_date(args.run_date)
     window = ReportWindow.for_run_date(run_date=run_date, lookback_days=args.lookback_days)
     report_key = build_s3_key(s3_prefix=args.s3_prefix, run_date=run_date)
+    events_table = _normalize_table_name(args.events_table)
 
     database_url = _require_env("DATABASE_URL")
     s3_client = S3Client(
@@ -348,11 +377,13 @@ def main(argv: list[str] | None = None) -> int:
 
     current = fetch_aggregates(
         database_url=database_url,
+        table_name=events_table,
         start_utc=window.start_utc,
         end_utc=window.end_utc,
     )
     baseline = fetch_aggregates(
         database_url=database_url,
+        table_name=events_table,
         start_utc=window.baseline_start_utc,
         end_utc=window.baseline_end_utc,
     )
