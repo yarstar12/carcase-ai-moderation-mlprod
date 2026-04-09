@@ -12,12 +12,14 @@ from _shared import (
     build_validation_dataset_key,
     build_validation_report_key,
     get_variable,
+    get_required_variable,
     parse_bool,
     resolve_common_runtime,
     resolve_s3_runtime,
 )
 
 LOGGER = logging.getLogger(__name__)
+DOCKER_NETWORK_MODE = get_required_variable("AIRFLOW_DOCKER_NETWORK_MODE")
 
 DEFAULT_ARGS = {
     "owner": "ml-platform",
@@ -145,7 +147,8 @@ def moderation_validation_evaluate() -> None:
         },
         auto_remove=True,
         docker_url="unix://var/run/docker.sock",
-        network_mode="{{ ti.xcom_pull(task_ids='resolve_validation_runtime')['docker_network_mode'] }}",
+        network_mode=DOCKER_NETWORK_MODE,
+        mount_tmp_dir=False,
     )
 
     @task(task_id="publish_validation_report_metadata")

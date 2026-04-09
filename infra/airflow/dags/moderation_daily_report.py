@@ -10,6 +10,7 @@ from airflow.providers.docker.operators.docker import DockerOperator
 from _shared import (
     build_daily_report_key,
     get_variable,
+    get_required_variable,
     parse_bool,
     resolve_common_runtime,
     resolve_postgres_runtime,
@@ -17,6 +18,7 @@ from _shared import (
 )
 
 LOGGER = logging.getLogger(__name__)
+DOCKER_NETWORK_MODE = get_required_variable("AIRFLOW_DOCKER_NETWORK_MODE")
 
 DEFAULT_ARGS = {
     "owner": "ml-platform",
@@ -96,7 +98,8 @@ def moderation_daily_report() -> None:
         },
         auto_remove=True,
         docker_url="unix://var/run/docker.sock",
-        network_mode="{{ ti.xcom_pull(task_ids='resolve_daily_report_runtime')['docker_network_mode'] }}",
+        network_mode=DOCKER_NETWORK_MODE,
+        mount_tmp_dir=False,
     )
 
     @task(task_id="publish_daily_report_metadata")
