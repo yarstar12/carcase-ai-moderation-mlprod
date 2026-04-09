@@ -32,7 +32,7 @@ DEFAULT_ARGS = {
     description="Evaluate moderation quality on a validation dataset and publish the report to S3/MinIO.",
     start_date=datetime(2026, 2, 1),
     schedule="@daily",
-    catchup=True,
+    catchup=False,
     default_args=DEFAULT_ARGS,
     render_template_as_native_obj=True,
     params={
@@ -160,7 +160,7 @@ def moderation_validation_evaluate() -> None:
             runtime_cfg["S3_BUCKET"],
         )
 
-    evaluate >> publish_validation_report_metadata(runtime)
+    runtime >> evaluate >> publish_validation_report_metadata(runtime)
 
 
 moderation_validation_evaluate()

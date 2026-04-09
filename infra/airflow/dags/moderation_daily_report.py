@@ -31,7 +31,7 @@ DEFAULT_ARGS = {
     description="Build a daily moderation report from Postgres and publish it to S3/MinIO.",
     start_date=datetime(2026, 2, 1),
     schedule="@daily",
-    catchup=True,
+    catchup=False,
     default_args=DEFAULT_ARGS,
     render_template_as_native_obj=True,
     params={
@@ -109,7 +109,7 @@ def moderation_daily_report() -> None:
             runtime_cfg["S3_BUCKET"],
         )
 
-    build_report >> publish_daily_report_metadata(runtime)
+    runtime >> build_report >> publish_daily_report_metadata(runtime)
 
 
 moderation_daily_report()
