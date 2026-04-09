@@ -1,46 +1,119 @@
-# Airflow (батч‑сервис) — заметки
+# Airflow / batch service
 
-Цель: ежедневный пакетный отчёт по модерации из Postgres → S3/MinIO.
+## Что уже реализовано
 
-## DAG
+В проекте есть 2 DAG'а:
 
-Файл DAG: `infra/airflow/dags/moderation_daily_report.py`
+1. `moderation_daily_report`
+2. `moderation_validation_evaluate`
 
-Оператор: `DockerOperator`, запускает команду:
+Оба DAG'а:
 
-```bash
-python -m carcase_ai_moderation.batch.daily_report --run-date {{ ds }}
+1. используют `DockerOperator` для основного batch run;
+2. получают runtime secrets через Airflow Connections / Variables;
+3. поддерживают rerun / overwrite;
+4. пишут output'ы в S3 / MinIO.
+
+## Task structure
+
+## `moderation_daily_report`
+
+1. `resolve_run_window`
+2. `resolve_daily_report_runtime`
+3. `generate_daily_report`
+4. `publish_daily_report_metadata`
+
+## `moderation_validation_evaluate`
+
+1. `resolve_dataset_source`
+2. `resolve_validation_runtime`
+3. `run_validation_evaluation`
+4. `publish_validation_report_metadata`
+
+## Параметры DAG run
+
+## `moderation_daily_report`
+
+1. `run_date`
+2. `lookback_days`
+3. `overwrite`
+
+## `moderation_validation_evaluate`
+
+1. `dataset_version`
+2. `dataset_kind`
+3. `max_examples`
+4. `include_redacted`
+5. `overwrite`
+
+## Airflow Variables
+
+Минимально нужны:
+
+1. `MODERATION_IMAGE`
+2. `DAILY_REPORTS_PREFIX` (optional, default `reports/daily`)
+3. `VALIDATION_DATASETS_PREFIX` (optional, default `datasets/validation`)
+4. `VALIDATION_REPORTS_PREFIX` (optional, default `reports/validation`)
+5. `AIRFLOW_DOCKER_NETWORK_MODE` (optional, default `bridge`)
+6. `PUSHGATEWAY_URL` (optional)
+7. `OPENAI_API_KEY`
+8. `OPENAI_MODEL` (optional)
+9. `OPENAI_BASE_URL` (optional)
+10. `OPENAI_TIMEOUT_S` (optional)
+11. `POLICY_VERSION` (optional)
+12. `PROMPT_VERSION` (optional)
+
+## Airflow Connections
+
+Нужно завести:
+
+## `moderation_postgres`
+
+Используется для чтения production moderation data.
+
+## `moderation_s3`
+
+Используется для:
+
+1. чтения validation dataset;
+2. записи daily / validation reports.
+
+Ожидаемый формат:
+
+1. `login` = access key
+2. `password` = secret key
+3. `extra.endpoint_url`
+4. `extra.bucket`
+
+Пример `extra`:
+
+```json
+{
+  "endpoint_url": "http://minio:9000",
+  "bucket": "carcase-mlprod"
+}
 ```
 
-Идемпотентность обеспечивается на уровне джобы: если объект отчёта уже есть в S3, задача завершится успешно без перезаписи.
+## Что показывать на защите
 
-## Требования к Airflow окружению
+1. DAG code
+2. Graph view
+3. Task logs
+4. Airflow UI connections
+5. Params при manual run
+6. rerun / overwrite
+7. output objects в S3 / MinIO
 
-- Airflow версии 2.x
-- установлен провайдер Docker: `apache-airflow-providers-docker`
-- доступ к демону Docker (обычно `/var/run/docker.sock`) на воркере, где выполняется задача
+## Логи
 
-## Переменные Airflow
+Логи task'ов доступны:
 
-DAG ожидает значения в переменных Airflow (`Airflow Variables`):
-- `MODERATION_IMAGE` — Docker‑образ с проектом (например `ghcr.io/<org>/<repo>:<tag>`)
-- `DATABASE_URL` — строка подключения к удалённому Postgres
-- `S3_ENDPOINT_URL` — адрес MinIO/S3
-- `S3_ACCESS_KEY`, `S3_SECRET_KEY`, `S3_BUCKET` — креды/бакет
-- (опционально) `PUSHGATEWAY_URL` — если задан, пакетная джоба отправляет метрики отчёта в Pushgateway
+1. в Airflow UI;
+2. в volume с Airflow logs на сервере.
 
-## Прогон за прошлые даты (backfill)
+## Локальный / серверный bootstrap
 
-```bash
-airflow dags backfill moderation_daily_report -s 2026-02-01 -e 2026-02-07
-```
+Шаблон compose для Airflow и MinIO подготовлен в:
 
-## DAG для оценки качества на датасете
-
-Файл DAG: `infra/airflow/dags/moderation_validation_evaluate.py`
-
-Задача: регулярная оценка качества на валидационном датасете (эталонном наборе примеров):
-- прогон короткого набора `smoke` — часто (регрессионный контроль),
-- прогон полного набора `full` — периодически или вручную (можно вынести в отдельный `@weekly` DAG или запускать вручную).
-
-Описание подхода: `docs/QUALITY_EVALUATION.md`.
+- `infra/airflow/docker-compose.yml`
+- `infra/airflow/.env.example`
