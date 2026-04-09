@@ -3,25 +3,35 @@ name: deploy
 on:
   workflow_dispatch:
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: read
+    env:
+      SSH_KEY_PATH: ~/.ssh/id_ed25519
     steps:
       - name: Write SSH key
         run: |
+          set -eu
           mkdir -p ~/.ssh
-          printf '%s' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          printf '%s' "${{ secrets.DEPLOY_SSH_KEY_B64 }}" | base64 --decode > "$SSH_KEY_PATH"
+          chmod 600 "$SSH_KEY_PATH"
 
       - name: Add known_hosts
         run: |
+          set -eu
+          touch ~/.ssh/known_hosts
           ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
 
       - name: Deploy (docker compose pull + up)
         run: |
-          ssh "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
+          set -eu
+          ssh -i "$SSH_KEY_PATH" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
             "cd \"${{ secrets.DEPLOY_PATH }}\" && docker compose pull && docker compose up -d"
-
