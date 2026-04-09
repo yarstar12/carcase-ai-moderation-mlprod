@@ -14,7 +14,7 @@ jobs:
       contents: read
       packages: read
     env:
-      SSH_KEY_PATH: ~/.ssh/id_ed25519
+      SSH_KEY_PATH: ${{ runner.temp }}/id_ed25519
     steps:
       - name: Write SSH key
         run: |
