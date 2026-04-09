@@ -3,7 +3,8 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 
-from airflow.decorators import dag, get_current_context, task
+from airflow.decorators import dag, task
+from airflow.operators.python import get_current_context
 from airflow.providers.docker.operators.docker import DockerOperator
 
 from _shared import (
