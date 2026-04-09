@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import random
 import time
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -193,6 +194,8 @@ def _select_examples(
     examples: list[ValidationExample],
     include_redacted: bool,
     max_examples: int | None,
+    shuffle: bool,
+    sample_seed: int | None,
 ) -> tuple[list[ValidationExample], int]:
     selected: list[ValidationExample] = []
     skipped_redacted = 0
@@ -201,8 +204,12 @@ def _select_examples(
             skipped_redacted += 1
             continue
         selected.append(example)
-        if max_examples is not None and len(selected) >= max_examples:
-            break
+
+    if shuffle:
+        random.Random(sample_seed).shuffle(selected)
+
+    if max_examples is not None:
+        selected = selected[:max_examples]
     return selected, skipped_redacted
 
 
@@ -467,6 +474,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Include examples containing [REDACTED_*] placeholders in evaluation.",
     )
     parser.add_argument(
+        "--shuffle",
+        action="store_true",
+        help="Shuffle filtered examples before applying max_examples.",
+    )
+    parser.add_argument(
+        "--sample-seed",
+        type=int,
+        default=None,
+        help="Optional random seed for reproducible shuffling.",
+    )
+    parser.add_argument(
         "--require-openai",
         action="store_true",
         help="Fail if OPENAI_API_KEY is not set (to avoid evaluating stub classifier).",
@@ -490,6 +508,8 @@ def main(argv: list[str] | None = None) -> int:
         examples=examples,
         include_redacted=args.include_redacted,
         max_examples=args.max_examples,
+        shuffle=args.shuffle,
+        sample_seed=args.sample_seed,
     )
 
     evaluation = _run_evaluation(examples=selected, settings=settings)

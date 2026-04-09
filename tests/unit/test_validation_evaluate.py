@@ -154,9 +154,48 @@ def test_select_examples_skips_redacted_and_honors_max_examples() -> None:
         examples=examples,
         include_redacted=False,
         max_examples=1,
+        shuffle=False,
+        sample_seed=None,
     )
     assert [e.example_id for e in selected] == ["e2"]
     assert skipped == 1
+
+
+def test_select_examples_can_shuffle_reproducibly() -> None:
+    examples = [
+        validation_evaluate.ValidationExample(
+            example_id=f"e{i}",
+            dataset_version="v1",
+            field=Field.SQUAD_NAME,
+            action=Action.CREATE,
+            text=f"text-{i}",
+            expected_categories=frozenset(),
+            expected_decision=Decision.ALLOW,
+            source="synthetic",
+            notes=None,
+        )
+        for i in range(5)
+    ]
+
+    selected_a, skipped_a = validation_evaluate._select_examples(
+        examples=examples,
+        include_redacted=True,
+        max_examples=3,
+        shuffle=True,
+        sample_seed=42,
+    )
+    selected_b, skipped_b = validation_evaluate._select_examples(
+        examples=examples,
+        include_redacted=True,
+        max_examples=3,
+        shuffle=True,
+        sample_seed=42,
+    )
+
+    assert skipped_a == 0
+    assert skipped_b == 0
+    assert [e.example_id for e in selected_a] == [e.example_id for e in selected_b]
+    assert [e.example_id for e in selected_a] != ["e0", "e1", "e2"]
 
 
 def test_load_dataset_from_local_path(tmp_path: Path) -> None:

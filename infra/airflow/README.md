@@ -44,7 +44,9 @@
 2. `dataset_kind`
 3. `max_examples`
 4. `include_redacted`
-5. `overwrite`
+5. `shuffle`
+6. `sample_seed`
+7. `overwrite`
 
 ## Airflow Variables
 

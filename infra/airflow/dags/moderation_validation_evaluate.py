@@ -42,6 +42,8 @@ DEFAULT_ARGS = {
         "dataset_kind": "smoke",
         "max_examples": 0,
         "include_redacted": False,
+        "shuffle": False,
+        "sample_seed": 42,
         "overwrite": False,
     },
     tags=["moderation", "batch", "validation", "quality", "s3"],
@@ -60,6 +62,9 @@ def moderation_validation_evaluate() -> None:
         max_examples_raw = int(params.get("max_examples") or 0)
         max_examples = max_examples_raw if max_examples_raw > 0 else None
         include_redacted = parse_bool(params.get("include_redacted"))
+        shuffle = parse_bool(params.get("shuffle"))
+        sample_seed_raw = params.get("sample_seed")
+        sample_seed = int(sample_seed_raw) if sample_seed_raw not in (None, "") else None
         overwrite = parse_bool(params.get("overwrite"))
         datasets_prefix = get_variable("VALIDATION_DATASETS_PREFIX", "datasets/validation")
         reports_prefix = get_variable("VALIDATION_REPORTS_PREFIX", "reports/validation")
@@ -80,6 +85,8 @@ def moderation_validation_evaluate() -> None:
             "dataset_kind": dataset_kind,
             "max_examples": max_examples,
             "include_redacted": include_redacted,
+            "shuffle": shuffle,
+            "sample_seed": sample_seed,
             "overwrite": overwrite,
             "datasets_prefix": datasets_prefix,
             "reports_prefix": reports_prefix,
@@ -130,6 +137,9 @@ def moderation_validation_evaluate() -> None:
             "{% set max_examples = ti.xcom_pull(task_ids='resolve_validation_runtime')['max_examples'] %}"
             "{% if max_examples %} --max-examples {{ max_examples }}{% endif %}"
             "{% if ti.xcom_pull(task_ids='resolve_validation_runtime')['include_redacted'] %} --include-redacted{% endif %}"
+            "{% if ti.xcom_pull(task_ids='resolve_validation_runtime')['shuffle'] %} --shuffle{% endif %}"
+            "{% set sample_seed = ti.xcom_pull(task_ids='resolve_validation_runtime')['sample_seed'] %}"
+            "{% if sample_seed is not none %} --sample-seed {{ sample_seed }}{% endif %}"
             "{% if ti.xcom_pull(task_ids='resolve_validation_runtime')['overwrite'] %} --overwrite{% endif %}"
         ),
         environment={
