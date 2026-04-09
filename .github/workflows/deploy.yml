@@ -13,13 +13,12 @@ jobs:
     permissions:
       contents: read
       packages: read
-    env:
-      SSH_KEY_PATH: ${{ runner.temp }}/id_ed25519
     steps:
       - name: Write SSH key
         run: |
           set -eu
           mkdir -p ~/.ssh
+          SSH_KEY_PATH="$RUNNER_TEMP/id_ed25519"
           printf '%s' "${{ secrets.DEPLOY_SSH_KEY_B64 }}" | base64 --decode > "$SSH_KEY_PATH"
           chmod 600 "$SSH_KEY_PATH"
 
@@ -32,6 +31,7 @@ jobs:
       - name: Deploy (docker compose pull + up)
         run: |
           set -eu
+          SSH_KEY_PATH="$RUNNER_TEMP/id_ed25519"
           ssh -i "$SSH_KEY_PATH" -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
             "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}" \
             "cd \"${{ secrets.DEPLOY_PATH }}\" && docker compose pull && docker compose up -d"
