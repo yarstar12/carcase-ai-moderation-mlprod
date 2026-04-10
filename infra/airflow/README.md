@@ -23,12 +23,18 @@
 3. `generate_daily_report`
 4. `publish_daily_report_metadata`
 
+Schedule:
+- `0 3 * * *` (ежедневно в 03:00 UTC)
+
 ## `moderation_validation_evaluate`
 
 1. `resolve_dataset_source`
 2. `resolve_validation_runtime`
 3. `run_validation_evaluation`
 4. `publish_validation_report_metadata`
+
+Schedule:
+- `None` (manual only)
 
 ## Параметры DAG run
 
