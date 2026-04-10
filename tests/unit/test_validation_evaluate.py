@@ -349,6 +349,66 @@ def test_build_report_sets_openai_fields_to_none_when_key_missing() -> None:
     assert versions["openai_base_url"] is None
 
 
+def test_build_summary_metrics_rounds_core_values() -> None:
+    ctx = validation_evaluate.EvaluationContext(
+        run_date=date(2026, 2, 26),
+        started_at=datetime(2026, 2, 26, 10, 0, 0, tzinfo=UTC),
+        finished_at=datetime(2026, 2, 26, 10, 1, 0, tzinfo=UTC),
+        elapsed_s=12.34567,
+        dataset_version="v1",
+        dataset_kind="full",
+        examples_total=1000,
+        examples_evaluated=200,
+        examples_skipped_redacted=3,
+        dataset_source={"type": "s3", "key": "k", "bucket": "b"},
+    )
+    block_metrics = BlockDecisionMetrics(
+        total=200,
+        review_rate=0.08549,
+        allow_rate=0.65549,
+        block_rate=0.25999,
+        accuracy=0.75499,
+        precision_block=0.86538,
+        recall_block_strict=0.61643,
+        recall_block_safe=0.72602,
+        f1_block=0.72001,
+        critical_fn_rate=0.27397,
+    )
+    multilabel_metrics = MultiLabelMetrics(
+        micro_precision=0.84931,
+        micro_recall=0.60194,
+        micro_f1=0.70454,
+        per_category={},
+    )
+
+    summary = validation_evaluate._build_summary_metrics(
+        ctx=ctx,
+        block_metrics=block_metrics,
+        multilabel_metrics=multilabel_metrics,
+    )
+
+    assert summary == {
+        "dataset_version": "v1",
+        "dataset_kind": "full",
+        "examples_evaluated": 200,
+        "examples_total": 1000,
+        "examples_skipped_redacted": 3,
+        "elapsed_seconds": 12.346,
+        "accuracy": 0.755,
+        "allow_rate": 0.6555,
+        "review_rate": 0.0855,
+        "block_rate": 0.26,
+        "precision_block": 0.8654,
+        "recall_block_strict": 0.6164,
+        "recall_block_safe": 0.726,
+        "f1_block": 0.72,
+        "critical_fn_rate": 0.274,
+        "categories_micro_precision": 0.8493,
+        "categories_micro_recall": 0.6019,
+        "categories_micro_f1": 0.7045,
+    }
+
+
 def test_main_skips_upload_when_report_exists(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

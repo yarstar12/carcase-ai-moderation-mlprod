@@ -345,6 +345,34 @@ def _build_report(
     }
 
 
+def _build_summary_metrics(
+    *,
+    ctx: EvaluationContext,
+    block_metrics: BlockDecisionMetrics,
+    multilabel_metrics: MultiLabelMetrics,
+) -> dict[str, object]:
+    return {
+        "dataset_version": ctx.dataset_version,
+        "dataset_kind": ctx.dataset_kind,
+        "examples_evaluated": ctx.examples_evaluated,
+        "examples_total": ctx.examples_total,
+        "examples_skipped_redacted": ctx.examples_skipped_redacted,
+        "elapsed_seconds": round(ctx.elapsed_s, 3),
+        "accuracy": round(block_metrics.accuracy, 4),
+        "allow_rate": round(block_metrics.allow_rate, 4),
+        "review_rate": round(block_metrics.review_rate, 4),
+        "block_rate": round(block_metrics.block_rate, 4),
+        "precision_block": round(block_metrics.precision_block, 4),
+        "recall_block_strict": round(block_metrics.recall_block_strict, 4),
+        "recall_block_safe": round(block_metrics.recall_block_safe, 4),
+        "f1_block": round(block_metrics.f1_block, 4),
+        "critical_fn_rate": round(block_metrics.critical_fn_rate, 4),
+        "categories_micro_precision": round(multilabel_metrics.micro_precision, 4),
+        "categories_micro_recall": round(multilabel_metrics.micro_recall, 4),
+        "categories_micro_f1": round(multilabel_metrics.micro_f1, 4),
+    }
+
+
 def _build_service(*, settings: Settings, http_client: httpx.Client | None) -> ModerationService:
     classifier: TextClassifierPort
     if settings.openai_api_key:
@@ -556,6 +584,18 @@ def main(argv: list[str] | None = None) -> int:
 
     s3_client.put_json(key=report_s3_key, payload=report)
     LOGGER.info("Uploaded validation report to S3: %s", report_s3_key)
+    LOGGER.info(
+        "Validation summary: %s",
+        json.dumps(
+            _build_summary_metrics(
+                ctx=ctx,
+                block_metrics=evaluation.block_metrics,
+                multilabel_metrics=evaluation.multilabel_metrics,
+            ),
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+    )
 
     pushgateway_url = getenv("PUSHGATEWAY_URL")
     if pushgateway_url:
