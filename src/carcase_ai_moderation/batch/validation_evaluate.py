@@ -373,6 +373,59 @@ def _build_summary_metrics(
     }
 
 
+def _format_summary_log(
+    *,
+    summary: dict[str, object],
+    confusion: dict[str, dict[str, int]],
+    per_category: dict[str, dict[str, float | int]],
+    report_s3_key: str,
+) -> str:
+    category_lines = [
+        (
+            f"{category}: f1={metrics['f1']:.4f}, precision={metrics['precision']:.4f}, "
+            f"recall={metrics['recall']:.4f}, tp={metrics['tp']}, fp={metrics['fp']}, fn={metrics['fn']}"
+        )
+        for category, metrics in sorted(
+            per_category.items(),
+            key=lambda item: (float(item[1]["f1"]), float(item[1]["recall"])),
+            reverse=True,
+        )
+    ]
+    if not category_lines:
+        category_lines = ["(no categories predicted or expected)"]
+
+    confusion_json = json.dumps(confusion, ensure_ascii=False, sort_keys=True)
+    return "\n".join(
+        [
+            "Validation summary:",
+            (
+                f"- dataset={summary['dataset_version']}/{summary['dataset_kind']} "
+                f"evaluated={summary['examples_evaluated']}/{summary['examples_total']} "
+                f"skipped_redacted={summary['examples_skipped_redacted']} "
+                f"elapsed_s={summary['elapsed_seconds']}"
+            ),
+            (
+                f"- decisions: accuracy={summary['accuracy']}, allow_rate={summary['allow_rate']}, "
+                f"review_rate={summary['review_rate']}, block_rate={summary['block_rate']}"
+            ),
+            (
+                f"- block: precision={summary['precision_block']}, "
+                f"recall_strict={summary['recall_block_strict']}, "
+                f"recall_safe={summary['recall_block_safe']}, f1={summary['f1_block']}, "
+                f"critical_fn_rate={summary['critical_fn_rate']}"
+            ),
+            (
+                f"- categories micro: precision={summary['categories_micro_precision']}, "
+                f"recall={summary['categories_micro_recall']}, f1={summary['categories_micro_f1']}"
+            ),
+            f"- confusion_matrix={confusion_json}",
+            f"- report_key={report_s3_key}",
+            "- per_category:",
+            *[f"  - {line}" for line in category_lines],
+        ]
+    )
+
+
 def _build_service(*, settings: Settings, http_client: httpx.Client | None) -> ModerationService:
     classifier: TextClassifierPort
     if settings.openai_api_key:
@@ -459,6 +512,11 @@ def _push_metrics(
 
 
 def main(argv: list[str] | None = None) -> int:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(name)s - %(message)s",
+        force=True,
+    )
     parser = argparse.ArgumentParser(
         description="Evaluate moderation quality on a validation dataset (golden set)."
     )
@@ -584,16 +642,18 @@ def main(argv: list[str] | None = None) -> int:
 
     s3_client.put_json(key=report_s3_key, payload=report)
     LOGGER.info("Uploaded validation report to S3: %s", report_s3_key)
+    summary = _build_summary_metrics(
+        ctx=ctx,
+        block_metrics=evaluation.block_metrics,
+        multilabel_metrics=evaluation.multilabel_metrics,
+    )
     LOGGER.info(
-        "Validation summary: %s",
-        json.dumps(
-            _build_summary_metrics(
-                ctx=ctx,
-                block_metrics=evaluation.block_metrics,
-                multilabel_metrics=evaluation.multilabel_metrics,
-            ),
-            ensure_ascii=False,
-            sort_keys=True,
+        "%s",
+        _format_summary_log(
+            summary=summary,
+            confusion=report["decisions"]["confusion_matrix"],  # type: ignore[index]
+            per_category=report["categories"]["per_category"],  # type: ignore[index]
+            report_s3_key=report_s3_key,
         ),
     )
 

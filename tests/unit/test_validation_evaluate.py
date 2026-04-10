@@ -409,6 +409,50 @@ def test_build_summary_metrics_rounds_core_values() -> None:
     }
 
 
+def test_format_summary_log_contains_core_sections() -> None:
+    summary = {
+        "dataset_version": "v1",
+        "dataset_kind": "full",
+        "examples_evaluated": 200,
+        "examples_total": 1000,
+        "examples_skipped_redacted": 0,
+        "elapsed_seconds": 176.102,
+        "accuracy": 0.755,
+        "allow_rate": 0.655,
+        "review_rate": 0.085,
+        "block_rate": 0.26,
+        "precision_block": 0.8654,
+        "recall_block_strict": 0.6164,
+        "recall_block_safe": 0.726,
+        "f1_block": 0.72,
+        "critical_fn_rate": 0.274,
+        "categories_micro_precision": 0.8493,
+        "categories_micro_recall": 0.6019,
+        "categories_micro_f1": 0.7045,
+    }
+    rendered = validation_evaluate._format_summary_log(
+        summary=summary,
+        confusion={"allow": {"allow": 97}, "block": {"allow": 20, "block": 45}},
+        per_category={
+            "spam_ads_scam": {
+                "tp": 5,
+                "fp": 7,
+                "fn": 6,
+                "precision": 0.4167,
+                "recall": 0.4545,
+                "f1": 0.4348,
+            }
+        },
+        report_s3_key="reports/validation/v1/full/2026-04-10.json",
+    )
+
+    assert "Validation summary:" in rendered
+    assert "dataset=v1/full evaluated=200/1000" in rendered
+    assert "confusion_matrix=" in rendered
+    assert "report_key=reports/validation/v1/full/2026-04-10.json" in rendered
+    assert "spam_ads_scam: f1=0.4348" in rendered
+
+
 def test_main_skips_upload_when_report_exists(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

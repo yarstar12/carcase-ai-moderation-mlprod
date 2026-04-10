@@ -37,7 +37,7 @@ Schedule:
 - `None` (manual only)
 
 Логи:
-- основной batch-task `run_validation_evaluation` пишет краткий JSON summary с ключевыми quality-метриками;
+- основной batch-task `run_validation_evaluation` пишет читаемый summary-блок с ключевыми quality-метриками, confusion matrix и per-category breakdown;
 - полный отчёт остаётся в `reports/validation/{dataset_version}/{dataset_kind}/{YYYY-MM-DD}.json`.
 
 ## Параметры DAG run
