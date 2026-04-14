@@ -3,19 +3,16 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timedelta
 
+from _shared import (
+    build_daily_report_key,
+    get_required_variable,
+    get_variable,
+    parse_bool,
+    resolve_common_runtime,
+)
 from airflow.decorators import dag, task
 from airflow.operators.python import get_current_context
 from airflow.providers.docker.operators.docker import DockerOperator
-
-from _shared import (
-    build_daily_report_key,
-    get_variable,
-    get_required_variable,
-    parse_bool,
-    resolve_common_runtime,
-    resolve_postgres_runtime,
-    resolve_s3_runtime,
-)
 
 LOGGER = logging.getLogger(__name__)
 DOCKER_NETWORK_MODE = get_required_variable("AIRFLOW_DOCKER_NETWORK_MODE")
@@ -66,8 +63,6 @@ def moderation_daily_report() -> None:
         runtime = {}
         runtime.update(run_cfg)
         runtime.update(resolve_common_runtime())
-        runtime.update(resolve_postgres_runtime())
-        runtime.update(resolve_s3_runtime())
         LOGGER.info(
             "Daily report runtime resolved: run_date=%s key=%s overwrite=%s",
             runtime["run_date"],
@@ -89,11 +84,11 @@ def moderation_daily_report() -> None:
             "{% if ti.xcom_pull(task_ids='resolve_daily_report_runtime')['overwrite'] %} --overwrite{% endif %}"
         ),
         environment={
-            "DATABASE_URL": "{{ ti.xcom_pull(task_ids='resolve_daily_report_runtime')['DATABASE_URL'] }}",
-            "S3_ENDPOINT_URL": "{{ ti.xcom_pull(task_ids='resolve_daily_report_runtime')['S3_ENDPOINT_URL'] }}",
-            "S3_ACCESS_KEY": "{{ ti.xcom_pull(task_ids='resolve_daily_report_runtime')['S3_ACCESS_KEY'] }}",
-            "S3_SECRET_KEY": "{{ ti.xcom_pull(task_ids='resolve_daily_report_runtime')['S3_SECRET_KEY'] }}",
-            "S3_BUCKET": "{{ ti.xcom_pull(task_ids='resolve_daily_report_runtime')['S3_BUCKET'] }}",
+            "DATABASE_URL": "{{ conn.moderation_postgres.get_uri().replace('postgres://', 'postgresql://', 1) }}",
+            "S3_ENDPOINT_URL": "{{ conn.moderation_s3.extra_dejson.get('endpoint_url', '') }}",
+            "S3_ACCESS_KEY": "{{ conn.moderation_s3.login }}",
+            "S3_SECRET_KEY": "{{ conn.moderation_s3.password }}",
+            "S3_BUCKET": "{{ conn.moderation_s3.extra_dejson.get('bucket', '') }}",
             "PUSHGATEWAY_URL": "{{ ti.xcom_pull(task_ids='resolve_daily_report_runtime')['pushgateway_url'] }}",
         },
         auto_remove=True,
@@ -105,11 +100,10 @@ def moderation_daily_report() -> None:
     @task(task_id="publish_daily_report_metadata")
     def publish_daily_report_metadata(runtime_cfg: dict[str, object]) -> None:
         LOGGER.info(
-            "Daily report finished: run_date=%s key=%s overwrite=%s bucket=%s",
+            "Daily report finished: run_date=%s key=%s overwrite=%s",
             runtime_cfg["run_date"],
             runtime_cfg["report_key"],
             runtime_cfg["overwrite"],
-            runtime_cfg["S3_BUCKET"],
         )
 
     runtime >> build_report >> publish_daily_report_metadata(runtime)
