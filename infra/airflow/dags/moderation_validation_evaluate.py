@@ -47,7 +47,7 @@ DEFAULT_ARGS = {
     tags=["moderation", "batch", "validation", "quality", "s3"],
 )
 def moderation_validation_evaluate() -> None:
-    @task(task_id="resolve_dataset_source")
+    @task(task_id="resolve_dataset_source", multiple_outputs=False)
     def resolve_dataset_source() -> dict[str, object]:
         context = get_current_context()
         params = context["params"]
@@ -92,7 +92,7 @@ def moderation_validation_evaluate() -> None:
             "report_key": report_key,
         }
 
-    @task(task_id="resolve_validation_runtime")
+    @task(task_id="resolve_validation_runtime", multiple_outputs=False)
     def resolve_validation_runtime(dataset_cfg: dict[str, object]) -> dict[str, object]:
         runtime = {}
         runtime.update(dataset_cfg)

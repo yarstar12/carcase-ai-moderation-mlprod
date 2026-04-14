@@ -41,7 +41,7 @@ DEFAULT_ARGS = {
     tags=["moderation", "batch", "daily-report", "s3", "postgres"],
 )
 def moderation_daily_report() -> None:
-    @task(task_id="resolve_run_window")
+    @task(task_id="resolve_run_window", multiple_outputs=False)
     def resolve_run_window() -> dict[str, object]:
         context = get_current_context()
         params = context["params"]
@@ -58,7 +58,7 @@ def moderation_daily_report() -> None:
             "report_key": report_key,
         }
 
-    @task(task_id="resolve_daily_report_runtime")
+    @task(task_id="resolve_daily_report_runtime", multiple_outputs=False)
     def resolve_daily_report_runtime(run_cfg: dict[str, object]) -> dict[str, object]:
         runtime = {}
         runtime.update(run_cfg)
